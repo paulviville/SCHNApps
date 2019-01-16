@@ -27,6 +27,7 @@
 #include <schnapps/plugins/cmap_provider/cmap1_provider_dock_tab.h>
 #include <schnapps/plugins/cmap_provider/cmap2_provider_dock_tab.h>
 #include <schnapps/plugins/cmap_provider/cmap3_provider_dock_tab.h>
+#include <schnapps/plugins/cmap_provider/undirected_graph_provider_dock_tab.h>
 
 #include <schnapps/core/schnapps.h>
 
@@ -60,6 +61,9 @@ bool Plugin_CMapProvider::enable()
 	cmap3_dock_tab_ = new CMap3Provider_DockTab(this->schnapps_, this);
 	schnapps_->add_control_dock_tab(this, cmap3_dock_tab_, "CMap3");
 
+	undirected_graph_dock_tab_ = new UndirectedGraphProvider_DockTab(this->schnapps_, this);
+	schnapps_->add_control_dock_tab(this, undirected_graph_dock_tab_, "Graph");
+
 	return true;
 }
 
@@ -76,6 +80,9 @@ void Plugin_CMapProvider::disable()
 
 	schnapps_->remove_control_dock_tab(this, cmap3_dock_tab_);
 	delete cmap3_dock_tab_;
+
+	schnapps_->remove_control_dock_tab(this, undirected_graph_dock_tab_);
+	delete undirected_graph_dock_tab_;
 }
 
 /*********************************************************
@@ -375,7 +382,7 @@ UndirectedGraphHandler* Plugin_CMapProvider::add_undirected_graph(const QString&
 	UndirectedGraphHandler* mh = new UndirectedGraphHandler(final_name, this);
 	objects_.insert(std::make_pair(final_name, mh));
 
-//	undirected_graph_dock_tab_->add_map(mh);
+	undirected_graph_dock_tab_->add_map(mh);
 	schnapps_->notify_object_added(mh);
 
 	return mh;
@@ -389,7 +396,7 @@ void Plugin_CMapProvider::remove_undirected_graph(const QString& name)
 
 		if (mh)
 		{
-//			undirected_graph_dock_tab_->remove_map(mh);
+			undirected_graph_dock_tab_->remove_map(mh);
 			schnapps_->notify_object_removed(mh);
 
 			objects_.erase(name);

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <exportmacro>SCHNAPPS_PLUGIN_CMAP_PROVIDER_API</exportmacro>
- <class>CMap1Provider_TabWidget</class>
- <widget class="QWidget" name="CMap1Provider_TabWidget">
+ <class>UndirectedGraphProvider_TabWidget</class>
+ <widget class="QWidget" name="UndirectedGraphProvider_TabWidget">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -33,6 +33,105 @@
    <string>Form</string>
   </property>
   <layout class="QGridLayout" name="gridLayout_2">
+   <item row="1" column="1">
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QLabel" name="label">
+       <property name="text">
+        <string>AABBox</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="combo_bbVertexAttribute">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item row="6" column="1">
+    <layout class="QHBoxLayout" name="horizontalLayout_3">
+     <item>
+      <widget class="QDoubleSpinBox" name="spin_scaling_x">
+       <property name="maximum">
+        <double>9.990000000000000</double>
+       </property>
+       <property name="singleStep">
+        <double>0.100000000000000</double>
+       </property>
+       <property name="value">
+        <double>1.000000000000000</double>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QDoubleSpinBox" name="spin_scaling_y">
+       <property name="maximum">
+        <double>9.990000000000000</double>
+       </property>
+       <property name="singleStep">
+        <double>0.100000000000000</double>
+       </property>
+       <property name="value">
+        <double>1.000000000000000</double>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QDoubleSpinBox" name="spin_scaling_z">
+       <property name="maximum">
+        <double>9.990000000000000</double>
+       </property>
+       <property name="singleStep">
+        <double>0.100000000000000</double>
+       </property>
+       <property name="value">
+        <double>1.000000000000000</double>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item row="5" column="1">
+    <widget class="QLabel" name="label_4">
+     <property name="text">
+      <string>Global render scaling</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <layout class="QHBoxLayout" name="horizontalLayout_2">
+     <item>
+      <widget class="QPushButton" name="button_remove">
+       <property name="text">
+        <string>remove</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="button_duplicate">
+       <property name="text">
+        <string>duplicate</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item row="0" column="1">
+    <widget class="QListWidget" name="list_maps">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+    </widget>
+   </item>
    <item row="3" column="1">
     <widget class="QTabWidget" name="tabWidget_mapInfo">
      <property name="sizePolicy">
@@ -146,13 +245,13 @@
        </item>
       </layout>
      </widget>
-     <widget class="QWidget" name="faceInfo">
+     <widget class="QWidget" name="edgeInfo">
       <attribute name="title">
-       <string>F</string>
+       <string>E</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_3">
        <item row="0" column="0">
-        <widget class="QLabel" name="label_faceNbCells">
+        <widget class="QLabel" name="label_edgeNbCells">
          <property name="text">
           <string>0</string>
          </property>
@@ -162,35 +261,35 @@
         </widget>
        </item>
        <item row="0" column="1" colspan="2">
-        <widget class="QLabel" name="label_faceCells">
+        <widget class="QLabel" name="label_edgeCells">
          <property name="text">
           <string>cells</string>
          </property>
         </widget>
        </item>
        <item row="1" column="0">
-        <widget class="QLabel" name="label_faceAttributes">
+        <widget class="QLabel" name="label_edgeAttributes">
          <property name="text">
           <string>Attributes :</string>
          </property>
         </widget>
        </item>
        <item row="2" column="0" colspan="3">
-        <widget class="QListWidget" name="list_faceAttributes">
+        <widget class="QListWidget" name="list_edgeAttributes">
          <property name="selectionMode">
           <enum>QAbstractItemView::SingleSelection</enum>
          </property>
         </widget>
        </item>
        <item row="3" column="0">
-        <widget class="QLabel" name="label_faceCellsSets">
+        <widget class="QLabel" name="label_edgeCellsSets">
          <property name="text">
           <string>Cells sets :</string>
          </property>
         </widget>
        </item>
        <item row="3" column="1">
-        <widget class="QPushButton" name="button_faceAddCellsSet">
+        <widget class="QPushButton" name="button_edgeAddCellsSet">
          <property name="minimumSize">
           <size>
            <width>25</width>
@@ -209,7 +308,7 @@
         </widget>
        </item>
        <item row="3" column="2">
-        <widget class="QPushButton" name="button_faceRemoveCellsSet">
+        <widget class="QPushButton" name="button_edgeRemoveCellsSet">
          <property name="minimumSize">
           <size>
            <width>25</width>
@@ -228,7 +327,7 @@
         </widget>
        </item>
        <item row="4" column="0" colspan="3">
-        <widget class="QListWidget" name="list_faceCellsSets">
+        <widget class="QListWidget" name="list_edgeCellsSets">
          <property name="selectionMode">
           <enum>QAbstractItemView::SingleSelection</enum>
          </property>
@@ -236,105 +335,6 @@
        </item>
       </layout>
      </widget>
-    </widget>
-   </item>
-   <item row="2" column="1">
-    <layout class="QHBoxLayout" name="horizontalLayout_2">
-     <item>
-      <widget class="QPushButton" name="button_remove">
-       <property name="text">
-        <string>remove</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="button_duplicate">
-       <property name="text">
-        <string>duplicate</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </item>
-   <item row="1" column="1">
-    <layout class="QHBoxLayout" name="horizontalLayout">
-     <item>
-      <widget class="QLabel" name="label">
-       <property name="text">
-        <string>AABBox</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QComboBox" name="combo_bbVertexAttribute">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </item>
-   <item row="0" column="1">
-    <widget class="QListWidget" name="list_maps">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
-    </widget>
-   </item>
-   <item row="6" column="1">
-    <layout class="QHBoxLayout" name="horizontalLayout_3">
-     <item>
-      <widget class="QDoubleSpinBox" name="spin_scaling_x">
-       <property name="maximum">
-        <double>9.990000000000000</double>
-       </property>
-       <property name="singleStep">
-        <double>0.100000000000000</double>
-       </property>
-       <property name="value">
-        <double>1.000000000000000</double>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QDoubleSpinBox" name="spin_scaling_y">
-       <property name="maximum">
-        <double>9.990000000000000</double>
-       </property>
-       <property name="singleStep">
-        <double>0.100000000000000</double>
-       </property>
-       <property name="value">
-        <double>1.000000000000000</double>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QDoubleSpinBox" name="spin_scaling_z">
-       <property name="maximum">
-        <double>9.990000000000000</double>
-       </property>
-       <property name="singleStep">
-        <double>0.100000000000000</double>
-       </property>
-       <property name="value">
-        <double>1.000000000000000</double>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </item>
-   <item row="5" column="1">
-    <widget class="QLabel" name="label_4">
-     <property name="text">
-      <string>Global render scaling</string>
-     </property>
     </widget>
    </item>
   </layout>

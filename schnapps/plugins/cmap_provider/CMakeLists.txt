@@ -36,6 +36,9 @@ target_sources(${PROJECT_NAME}
 		"${CMAKE_CURRENT_LIST_DIR}/cmap3_provider.ui"
 		"${CMAKE_CURRENT_LIST_DIR}/undirected_graph_handler.h"
 		"${CMAKE_CURRENT_LIST_DIR}/undirected_graph_handler.cpp"
+                "${CMAKE_CURRENT_LIST_DIR}/undirected_graph_provider_dock_tab.h"
+                "${CMAKE_CURRENT_LIST_DIR}/undirected_graph_provider_dock_tab.cpp"
+                "${CMAKE_CURRENT_LIST_DIR}/undirected_graph_provider.ui"
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES

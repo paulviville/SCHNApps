@@ -344,8 +344,13 @@ void Plugin_PolylineRender::linked_object_bb_changed()
 		}
 	}
 
-	for (View* view : mh->linked_views())
-		view->update();
+	if (mh)
+		for (View* view : mh->linked_views())
+			view->update();
+
+	if (ugh)
+		for (View* view : ugh->linked_views())
+			view->update();
 }
 
 void Plugin_PolylineRender::viewer_initialized()

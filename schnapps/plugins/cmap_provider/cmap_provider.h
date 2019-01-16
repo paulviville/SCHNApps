@@ -44,6 +44,7 @@ class CMap0Provider_DockTab;
 class CMap1Provider_DockTab;
 class CMap2Provider_DockTab;
 class CMap3Provider_DockTab;
+class UndirectedGraphProvider_DockTab;
 
 /**
 * @brief CGoGN CMap2 provider
@@ -103,6 +104,7 @@ private:
 	CMap1Provider_DockTab* cmap1_dock_tab_;
 	CMap2Provider_DockTab* cmap2_dock_tab_;
 	CMap3Provider_DockTab* cmap3_dock_tab_;
+	UndirectedGraphProvider_DockTab* undirected_graph_dock_tab_;
 };
 
 } // namespace plugin_cmap_provider

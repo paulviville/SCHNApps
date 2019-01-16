@@ -21,7 +21,7 @@
 *                                                                              *
 *******************************************************************************/
 
-#include <schnapps/plugins/cmap_provider/cmap1_provider_dock_tab.h>
+#include <schnapps/plugins/cmap_provider/undirected_graph_provider_dock_tab.h>
 #include <schnapps/plugins/cmap_provider/cmap_cells_set.h>
 
 #include <schnapps/plugins/cmap_provider/cmap_provider.h>
@@ -32,7 +32,7 @@ namespace schnapps
 namespace plugin_cmap_provider
 {
 
-CMap1Provider_DockTab::CMap1Provider_DockTab(SCHNApps* s, Plugin_CMapProvider* p) :
+UndirectedGraphProvider_DockTab::UndirectedGraphProvider_DockTab(SCHNApps* s, Plugin_CMapProvider* p) :
 	schnapps_(s),
 	plugin_(p),
 	selected_map_(nullptr),
@@ -58,28 +58,28 @@ CMap1Provider_DockTab::CMap1Provider_DockTab(SCHNApps* s, Plugin_CMapProvider* p
 	connect(spin_scaling_z, SIGNAL(valueChanged(double)), this, SLOT(scale_object()));
 }
 
-CMap1Provider_DockTab::~CMap1Provider_DockTab()
+UndirectedGraphProvider_DockTab::~UndirectedGraphProvider_DockTab()
 {
 
 }
 
-cgogn::Orbit CMap1Provider_DockTab::current_orbit()
+cgogn::Orbit UndirectedGraphProvider_DockTab::current_orbit()
 {
 	int current = tabWidget_mapInfo->currentIndex();
 	switch (current)
 	{
-		case 0: return CMap1::Vertex::ORBIT;
-		case 1: return CMap1::Face::ORBIT;
-		default: return CMap1::Vertex::ORBIT;
+		case 0: return UndirectedGraph::Vertex::ORBIT;
+		case 1: return UndirectedGraph::Edge::ORBIT;
+		default: return UndirectedGraph::Vertex::ORBIT;
 	}
 }
 
-QString CMap1Provider_DockTab::orbit_name(cgogn::Orbit orbit)
+QString UndirectedGraphProvider_DockTab::orbit_name(cgogn::Orbit orbit)
 {
 	switch (orbit)
 	{
-		case CMap1::Vertex::ORBIT: return QString("Vertex");
-		case CMap1::Face::ORBIT: return QString("Face");
+		case UndirectedGraph::Vertex::ORBIT: return QString("Vertex");
+		case UndirectedGraph::Edge::ORBIT: return QString("Edge");
 		default: return QString("Vertex");
 	}
 }
@@ -88,7 +88,7 @@ QString CMap1Provider_DockTab::orbit_name(cgogn::Orbit orbit)
 // slots called from UI signals
 /*****************************************************************************/
 
-void CMap1Provider_DockTab::selected_map_changed()
+void UndirectedGraphProvider_DockTab::selected_map_changed()
 {
 	if (selected_map_)
 	{
@@ -110,7 +110,7 @@ void CMap1Provider_DockTab::selected_map_changed()
 	if (!currentItems.empty())
 	{
 		const QString& map_name = currentItems[0]->text();
-		selected_map_ = plugin_->cmap1(map_name);
+		selected_map_ = plugin_->undirected_graph(map_name);
 	}
 
 	if (selected_map_)
@@ -130,31 +130,31 @@ void CMap1Provider_DockTab::selected_map_changed()
 	refresh_ui();
 }
 
-void CMap1Provider_DockTab::duplicate_current_map_clicked()
+void UndirectedGraphProvider_DockTab::duplicate_current_map_clicked()
 {
 	if (!updating_ui_ && selected_map_)
 		plugin_->duplicate_cmap1(selected_map_->name());
 }
 
-void CMap1Provider_DockTab::remove_current_map_clicked()
+void UndirectedGraphProvider_DockTab::remove_current_map_clicked()
 {
 	if (!updating_ui_ && selected_map_)
 		plugin_->remove_cmap1(selected_map_->name());
 }
 
-void CMap1Provider_DockTab::bb_vertex_attribute_changed(int)
+void UndirectedGraphProvider_DockTab::bb_vertex_attribute_changed(int)
 {
 	if (!updating_ui_ && selected_map_)
 		selected_map_->set_bb_vertex_attribute(combo_bbVertexAttribute->currentText());
 }
 
-//void CMap1Provider_DockTab::obb_vertex_attribute_changed(int)
+//void UndirectedGraphProvider_DockTab::obb_vertex_attribute_changed(int)
 //{
 //	if (!updating_ui_ && selected_map_)
 //		selected_map_->set_obb_vertex_attribute(combo_obbVertexAttribute->currentText());
 //}
 
-void CMap1Provider_DockTab::vertex_attribute_check_state_changed(QListWidgetItem* item)
+void UndirectedGraphProvider_DockTab::vertex_attribute_check_state_changed(QListWidgetItem* item)
 {
 	if (!updating_ui_ && selected_map_)
 	{
@@ -173,7 +173,7 @@ void CMap1Provider_DockTab::vertex_attribute_check_state_changed(QListWidgetItem
 	}
 }
 
-void CMap1Provider_DockTab::cells_set_check_state_changed(QListWidgetItem* item)
+void UndirectedGraphProvider_DockTab::cells_set_check_state_changed(QListWidgetItem* item)
 {
 	if (!updating_ui_ && selected_map_)
 	{
@@ -183,7 +183,7 @@ void CMap1Provider_DockTab::cells_set_check_state_changed(QListWidgetItem* item)
 	}
 }
 
-void CMap1Provider_DockTab::add_cells_set()
+void UndirectedGraphProvider_DockTab::add_cells_set()
 {
 	if (!updating_ui_ && selected_map_)
 	{
@@ -193,7 +193,7 @@ void CMap1Provider_DockTab::add_cells_set()
 	}
 }
 
-void CMap1Provider_DockTab::remove_cells_set()
+void UndirectedGraphProvider_DockTab::remove_cells_set()
 {
 	if (!updating_ui_ && selected_map_)
 	{
@@ -201,8 +201,8 @@ void CMap1Provider_DockTab::remove_cells_set()
 		QListWidget* list_cells_set = nullptr;
 		switch (orbit)
 		{
-			case CMap1::Vertex::ORBIT: list_cells_set = list_vertexCellsSets; break;
-			case CMap1::Face::ORBIT: list_cells_set = list_faceCellsSets; break;
+			case UndirectedGraph::Vertex::ORBIT: list_cells_set = list_vertexCellsSets; break;
+			case UndirectedGraph::Edge::ORBIT: list_cells_set = list_edgeCellsSets; break;
 			default: break;
 		}
 		if (!list_cells_set)
@@ -221,18 +221,18 @@ void CMap1Provider_DockTab::remove_cells_set()
 
 
 /*****************************************************************************/
-// slots called from CMap1Handler signals
+// slots called from UndirectedGraphHandler signals
 /*****************************************************************************/
 
-void CMap1Provider_DockTab::selected_map_attribute_added(cgogn::Orbit orbit, const QString& name)
+void UndirectedGraphProvider_DockTab::selected_map_attribute_added(cgogn::Orbit orbit, const QString& name)
 {
 	updating_ui_ = true;
 	switch (orbit)
 	{
-		case CMap1::Vertex::ORBIT: {
+		case UndirectedGraph::Vertex::ORBIT: {
 			QListWidgetItem* item = new QListWidgetItem(name, list_vertexAttributes);
 			QString vec3_type_name = QString::fromStdString(cgogn::name_of_type(VEC3()));
-			const auto* cag = selected_map_->map()->attribute_container<CMap1::Vertex::ORBIT>().get_chunk_array(name.toStdString());
+			const auto* cag = selected_map_->map()->attribute_container<UndirectedGraph::Vertex::ORBIT>().get_chunk_array(name.toStdString());
 			if (cag)
 			{
 				QString type_name = QString::fromStdString(cag->type_name());
@@ -245,21 +245,25 @@ void CMap1Provider_DockTab::selected_map_attribute_added(cgogn::Orbit orbit, con
 				item->setCheckState(Qt::Unchecked);
 			break;
 		}
+		case UndirectedGraph::Edge::ORBIT: {
+			list_edgeAttributes->addItem(name);
+			break;
+		}
 		default: break;
 	}
 	updating_ui_ = false;
 }
 
-void CMap1Provider_DockTab::selected_map_attribute_removed(cgogn::Orbit orbit, const QString& name)
+void UndirectedGraphProvider_DockTab::selected_map_attribute_removed(cgogn::Orbit orbit, const QString& name)
 {
 	updating_ui_ = true;
 	switch (orbit)
 	{
-		case CMap1::Vertex::ORBIT: {
+		case UndirectedGraph::Vertex::ORBIT: {
 			QList<QListWidgetItem*> items = list_vertexAttributes->findItems(name, Qt::MatchExactly);
 			if (!items.empty()) delete items[0];
 			QString vec3_type_name = QString::fromStdString(cgogn::name_of_type(VEC3()));
-			const auto* cag = selected_map_->map()->attribute_container<CMap1::Vertex::ORBIT>().get_chunk_array(name.toStdString());
+			const auto* cag = selected_map_->map()->attribute_container<UndirectedGraph::Vertex::ORBIT>().get_chunk_array(name.toStdString());
 			if (cag)
 			{
 				QString type_name = QString::fromStdString(cag->type_name());
@@ -272,12 +276,17 @@ void CMap1Provider_DockTab::selected_map_attribute_removed(cgogn::Orbit orbit, c
 			}
 			break;
 		}
+		case UndirectedGraph::Edge::ORBIT: {
+			QList<QListWidgetItem*> items = list_edgeAttributes->findItems(name, Qt::MatchExactly);
+			if (!items.empty()) delete items[0];
+			break;
+		}
 		default: break;
 	}
 	updating_ui_ = false;
 }
 
-void CMap1Provider_DockTab::selected_map_bb_vertex_attribute_changed(const QString& name)
+void UndirectedGraphProvider_DockTab::selected_map_bb_vertex_attribute_changed(const QString& name)
 {
 	updating_ui_ = true;
 	int index = combo_bbVertexAttribute->findText(name, Qt::MatchExactly);
@@ -286,7 +295,7 @@ void CMap1Provider_DockTab::selected_map_bb_vertex_attribute_changed(const QStri
 	updating_ui_ = false;
 }
 
-//void CMap1Provider_DockTab::selected_map_obb_vertex_attribute_changed(const QString& name)
+//void UndirectedGraphProvider_DockTab::selected_map_obb_vertex_attribute_changed(const QString& name)
 //{
 //	updating_ui_ = true;
 //	int index = combo_obbVertexAttribute->findText(name, Qt::MatchExactly);
@@ -295,7 +304,7 @@ void CMap1Provider_DockTab::selected_map_bb_vertex_attribute_changed(const QStri
 //	updating_ui_ = false;
 //}
 
-void CMap1Provider_DockTab::selected_map_vbo_added(cgogn::rendering::VBO* vbo)
+void UndirectedGraphProvider_DockTab::selected_map_vbo_added(cgogn::rendering::VBO* vbo)
 {
 	updating_ui_ = true;
 	QList<QListWidgetItem*> items = list_vertexAttributes->findItems(QString::fromStdString(vbo->name()), Qt::MatchExactly);
@@ -304,7 +313,7 @@ void CMap1Provider_DockTab::selected_map_vbo_added(cgogn::rendering::VBO* vbo)
 	updating_ui_ = false;
 }
 
-void CMap1Provider_DockTab::selected_map_vbo_removed(cgogn::rendering::VBO* vbo)
+void UndirectedGraphProvider_DockTab::selected_map_vbo_removed(cgogn::rendering::VBO* vbo)
 {
 	updating_ui_ = true;
 	QList<QListWidgetItem*> items = list_vertexAttributes->findItems(QString::fromStdString(vbo->name()), Qt::MatchExactly);
@@ -313,22 +322,25 @@ void CMap1Provider_DockTab::selected_map_vbo_removed(cgogn::rendering::VBO* vbo)
 	updating_ui_ = false;
 }
 
-void CMap1Provider_DockTab::selected_map_connectivity_changed()
+void UndirectedGraphProvider_DockTab::selected_map_connectivity_changed()
 {
 	updating_ui_ = true;
 
 	label_vertexNbCells->setText(QString::number(0));
+	label_edgeNbCells->setText(QString::number(0));
 
 	if (selected_map_)
 	{
-		const uint32 nb_v = selected_map_->map()->nb_cells<CMap1::Vertex>();
+		const uint32 nb_v = selected_map_->map()->nb_cells<UndirectedGraph::Vertex>();
 		label_vertexNbCells->setText(QString::number(nb_v));
+		const uint32 nb_e = selected_map_->map()->nb_cells<UndirectedGraph::Edge>();
+		label_edgeNbCells->setText(QString::number(nb_e));
 	}
 
 	updating_ui_ = false;
 }
 
-void CMap1Provider_DockTab::selected_map_cells_set_added(cgogn::Orbit orbit, const QString& name)
+void UndirectedGraphProvider_DockTab::selected_map_cells_set_added(cgogn::Orbit orbit, const QString& name)
 {
 	updating_ui_ = true;
 
@@ -336,15 +348,15 @@ void CMap1Provider_DockTab::selected_map_cells_set_added(cgogn::Orbit orbit, con
 	CMapCellsSetGen* cs = nullptr;
 	switch (orbit)
 	{
-		case CMap1::Vertex::ORBIT:
-			cs = selected_map_->cells_set<CMap1::Vertex>(name);
+		case UndirectedGraph::Vertex::ORBIT:
+			cs = selected_map_->cells_set<UndirectedGraph::Vertex>(name);
 			if (cs)
 				item = new QListWidgetItem(name, list_vertexCellsSets);
 			break;
-		case CMap1::Face::ORBIT:
-			cs = selected_map_->cells_set<CMap1::Face>(name);
+		case UndirectedGraph::Edge::ORBIT:
+			cs = selected_map_->cells_set<UndirectedGraph::Edge>(name);
 			if (cs)
-				item = new QListWidgetItem(name, list_faceCellsSets);
+				item = new QListWidgetItem(name, list_edgeCellsSets);
 			break;
 		default:
 			break;
@@ -361,18 +373,18 @@ void CMap1Provider_DockTab::selected_map_cells_set_added(cgogn::Orbit orbit, con
 	updating_ui_ = false;
 }
 
-void CMap1Provider_DockTab::selected_map_cells_set_removed(cgogn::Orbit orbit, const QString& name)
+void UndirectedGraphProvider_DockTab::selected_map_cells_set_removed(cgogn::Orbit orbit, const QString& name)
 {
 	updating_ui_ = true;
 
 	QList<QListWidgetItem*> items;
 	switch (orbit)
 	{
-		case CMap1::Vertex::ORBIT:
+		case UndirectedGraph::Vertex::ORBIT:
 			items = list_vertexCellsSets->findItems(name, Qt::MatchExactly);
 			break;
-		case CMap1::Face::ORBIT:
-			items = list_faceCellsSets->findItems(name, Qt::MatchExactly);
+		case UndirectedGraph::Edge::ORBIT:
+			items = list_edgeCellsSets->findItems(name, Qt::MatchExactly);
 			break;
 		default:
 			break;
@@ -383,7 +395,7 @@ void CMap1Provider_DockTab::selected_map_cells_set_removed(cgogn::Orbit orbit, c
 	updating_ui_ = false;
 }
 
-void CMap1Provider_DockTab::selected_map_cells_set_mutually_exclusive_changed(cgogn::Orbit orbit, const QString& name)
+void UndirectedGraphProvider_DockTab::selected_map_cells_set_mutually_exclusive_changed(cgogn::Orbit orbit, const QString& name)
 {
 	updating_ui_ = true;
 
@@ -391,13 +403,13 @@ void CMap1Provider_DockTab::selected_map_cells_set_mutually_exclusive_changed(cg
 	QList<QListWidgetItem*> items;
 	switch (orbit)
 	{
-		case CMap1::Vertex::ORBIT:
-			cs = selected_map_->cells_set<CMap1::Vertex>(name);
+		case UndirectedGraph::Vertex::ORBIT:
+			cs = selected_map_->cells_set<UndirectedGraph::Vertex>(name);
 			items = list_vertexCellsSets->findItems(name, Qt::MatchExactly);
 			break;
-		case CMap1::Face::ORBIT:
-			cs = selected_map_->cells_set<CMap1::Face>(name);
-			items = list_faceCellsSets->findItems(name, Qt::MatchExactly);
+		case UndirectedGraph::Edge::ORBIT:
+			cs = selected_map_->cells_set<UndirectedGraph::Edge>(name);
+			items = list_edgeCellsSets->findItems(name, Qt::MatchExactly);
 			break;
 		default:
 			break;
@@ -408,26 +420,26 @@ void CMap1Provider_DockTab::selected_map_cells_set_mutually_exclusive_changed(cg
 	updating_ui_ = false;
 }
 
-void CMap1Provider_DockTab::scale_object()
+void UndirectedGraphProvider_DockTab::scale_object()
 {
 	if(selected_map_)
-		selected_map_->rescale(spin_scaling_x->value(), spin_scaling_y->value(), spin_scaling_z->value());
+		selected_map_->rescale(spin_scaling_x->value(),spin_scaling_y->value(),spin_scaling_z->value());
 }
 
 /*****************************************************************************/
 // methods used to update the UI from the plugin
 /*****************************************************************************/
 
-void CMap1Provider_DockTab::add_map(CMap1Handler* mh)
+void UndirectedGraphProvider_DockTab::add_map(UndirectedGraphHandler* ugh)
 {
 	updating_ui_ = true;
-	list_maps->addItem(mh->name());
+	list_maps->addItem(ugh->name());
 	updating_ui_ = false;
 }
 
-void CMap1Provider_DockTab::remove_map(CMap1Handler* mh)
+void UndirectedGraphProvider_DockTab::remove_map(UndirectedGraphHandler* ugh)
 {
-	if (selected_map_ == mh)
+	if (selected_map_ == ugh)
 	{
 		disconnect(selected_map_, SIGNAL(attribute_added(cgogn::Orbit, const QString&)), this, SLOT(selected_map_attribute_added(cgogn::Orbit, const QString&)));
 		disconnect(selected_map_, SIGNAL(attribute_removed(cgogn::Orbit, const QString&)), this, SLOT(selected_map_attribute_removed(cgogn::Orbit, const QString&)));
@@ -442,7 +454,7 @@ void CMap1Provider_DockTab::remove_map(CMap1Handler* mh)
 		selected_map_ = nullptr;
 	}
 
-	QList<QListWidgetItem*> items = list_maps->findItems(mh->name(), Qt::MatchExactly);
+	QList<QListWidgetItem*> items = list_maps->findItems(ugh->name(), Qt::MatchExactly);
 	if (!items.empty())
 	{
 		updating_ui_ = true;
@@ -451,7 +463,7 @@ void CMap1Provider_DockTab::remove_map(CMap1Handler* mh)
 	}
 }
 
-void CMap1Provider_DockTab::refresh_ui()
+void UndirectedGraphProvider_DockTab::refresh_ui()
 {
 	updating_ui_ = true;
 
@@ -462,22 +474,24 @@ void CMap1Provider_DockTab::refresh_ui()
 	QString vec3_type_name = QString::fromStdString(cgogn::name_of_type(VEC3()));
 
 	list_vertexAttributes->clear();
+	list_edgeAttributes->clear();
 
 	list_vertexCellsSets->clear();
+	list_edgeCellsSets->clear();
 
 	label_vertexNbCells->setText(QString::number(0));
-
+	label_edgeNbCells->setText(QString::number(0));
 
 	if (selected_map_)
 	{
-		CMap1* map = selected_map_->map();
+		UndirectedGraph* map = selected_map_->map();
 
-		const uint32 nb_v = map->nb_cells<CMap1::Vertex>();
+		const uint32 nb_v = map->nb_cells<UndirectedGraph::Vertex>();
 		label_vertexNbCells->setText(QString::number(nb_v));
 
-		if (map->is_embedded<CMap1::Vertex>())
+		if (map->is_embedded<UndirectedGraph::Vertex>())
 		{
-			const auto& container = map->attribute_container<CMap1::Vertex::ORBIT>();
+			const auto& container = map->attribute_container<UndirectedGraph::Vertex::ORBIT>();
 			const std::vector<std::string>& names = container.names();
 			const std::vector<std::string>& type_names = container.type_names();
 			unsigned int bb_index = 1;
@@ -505,9 +519,35 @@ void CMap1Provider_DockTab::refresh_ui()
 			}
 		}
 
-		selected_map_->foreach_cells_set<CMap1::Vertex>([&] (CMap1Handler::CMap1CellsSet<CMap1::Vertex>* cells_set)
+		selected_map_->foreach_cells_set<UndirectedGraph::Vertex>([&] (UndirectedGraphHandler::UndirectedGraphCellsSet<UndirectedGraph::Vertex>* cells_set)
 		{
 			QListWidgetItem* item = new QListWidgetItem(cells_set->name(), list_vertexCellsSets);
+			item->setFlags(item->flags() | Qt::ItemIsEditable);
+			if (cells_set->is_mutually_exclusive())
+				item->setCheckState(Qt::Checked);
+			else
+				item->setCheckState(Qt::Unchecked);
+		});
+
+		const uint32 nb_e = map->nb_cells<UndirectedGraph::Edge>();
+		label_edgeNbCells->setText(QString::number(nb_e));
+
+		if (map->is_embedded<UndirectedGraph::Edge>())
+		{
+			const auto& container = map->attribute_container<UndirectedGraph::Edge::ORBIT>();
+			const std::vector<std::string>& names = container.names();
+//			const std::vector<std::string>& type_names = container.type_names();
+			for (std::size_t i = 0u; i < names.size(); ++i)
+			{
+				QString name = QString::fromStdString(names[i]);
+//				QString type = QString::fromStdString(type_names[i]);
+				list_edgeAttributes->addItem(name /*+ " (" + type + ")"*/);
+			}
+		}
+
+		selected_map_->foreach_cells_set<UndirectedGraph::Edge>([&] (UndirectedGraphHandler::UndirectedGraphCellsSet<UndirectedGraph::Edge>* cells_set)
+		{
+			QListWidgetItem* item = new QListWidgetItem(cells_set->name(), list_edgeCellsSets);
 			item->setFlags(item->flags() | Qt::ItemIsEditable);
 			if (cells_set->is_mutually_exclusive())
 				item->setCheckState(Qt::Checked);
@@ -524,7 +564,7 @@ void CMap1Provider_DockTab::refresh_ui()
 	updating_ui_ = false;
 }
 
-/*******************************Ò**********************************************/
+/*****************************************************************************/
 // internal UI cascading updates
 /*****************************************************************************/
 
