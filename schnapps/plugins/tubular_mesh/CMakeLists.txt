@@ -12,6 +12,8 @@ target_sources(${PROJECT_NAME}
 		"${CMAKE_CURRENT_LIST_DIR}/dll.h"
 		"${CMAKE_CURRENT_LIST_DIR}/tubular_mesh.h"
 		"${CMAKE_CURRENT_LIST_DIR}/tubular_mesh.cpp"
+                "${CMAKE_CURRENT_LIST_DIR}/vessels_builder.h"
+                "${CMAKE_CURRENT_LIST_DIR}/vessels_builder.cpp"
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
@@ -30,6 +32,7 @@ target_link_libraries(${PROJECT_NAME}
 	schnapps::core
         schnapps::cmap_provider
         schnapps::import
+        schnapps::polyline_render
 )
 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/
