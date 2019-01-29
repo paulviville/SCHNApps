@@ -3,13 +3,12 @@
 
 #include <cgogn/core/cmap/cmap3.h>
 #include <cgogn/core/cmap/cmap3_builder.h>
-
 #include <cgogn/core/graph/undirected_graph.h>
 #include <cgogn/core/graph/undirected_graph_builder.h>
 
-#include <cgogn/geometry/types/eigen.h>
 #include <cgogn/geometry/functions/orientation.h>
 #include <schnapps/core/schnapps.h>
+
 namespace schnapps
 {
 class Vessels_Builder{
@@ -30,8 +29,6 @@ public:
     void set_skeleton(UGraph* ug);
     void set_cmap3(CMap3* cmap3);
     bool compute_cmap3();
-    void analyse_graph();
-
 
 private:
     CMap3* cmap3_;
@@ -42,16 +39,24 @@ private:
     std::vector<UGVertex> extremities_;
     std::vector<UGVertex> intersections_;
     std::vector<std::pair<Dart, Dart>> branches_;
-
-//    void analyse_graph();
+    UndirectedGraph::VertexAttribute<VEC3> UGposition_;
+//    CMap3::ChunkArrayContainer* M3Cac_;
+    CMap3::ChunkArray<VEC3>* M3position_;
+    UndirectedGraph::CDartAttribute<Dart> UGConnections_;
+//    UndirectedGraph::EdgeAttribute
+    void analyse_graph();
     void find_ends();
     void find_branches();
     void check_isolated_loops();
 
+    void build_cmap3();
     void build_intersections();
-    void build_intersection3(uint32 inter_nb);
+    void build_intersection3(UGVertex ugv);
     void build_branches();
     void build_branch(uint32 branch_nb);
+    Dart add_hexa(std::vector<uint32> verts);
+
+    void clean_up();
 };
 
 } // namespace schnapps
