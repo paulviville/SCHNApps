@@ -27,6 +27,7 @@
 #include <schnapps/plugins/cmap_provider/cmap_provider.h>
 #include <schnapps/plugins/import/import.h>
 #include <schnapps/plugins/polyline_render/polyline_render.h>
+#include <schnapps/plugins/volume_render/volume_render.h>
 
 #include <schnapps/core/schnapps.h>
 #include <cgogn/geometry/types/geometry_traits.h>
@@ -69,8 +70,11 @@ bool Plugin_TubularMesh::enable()
 	plugin_import_ = static_cast<plugin_import::Plugin_Import*>(schnapps_->enable_plugin(plugin_import::Plugin_Import::plugin_name()));
 	plugin_cmap_provider_ = static_cast<plugin_cmap_provider::Plugin_CMapProvider*>(schnapps_->enable_plugin(plugin_cmap_provider::Plugin_CMapProvider::plugin_name()));
     plugin_polyline_render_ = static_cast<plugin_polyline_render::Plugin_PolylineRender*>(schnapps_->enable_plugin(plugin_polyline_render::Plugin_PolylineRender::plugin_name()));
+    plugin_volume_render_ = static_cast<plugin_volume_render::Plugin_VolumeRender*>(schnapps_->enable_plugin(plugin_volume_render::Plugin_VolumeRender::plugin_name()));
 
     ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/two_intersections.cg");
+//    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/intersection_alone.cg");
+//    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/intersection.cg");
     plugin_polyline_render_->set_edge_color(schnapps_->selected_view(), ugh_, QColor(255,255,255), true);
     plugin_polyline_render_->set_vertex_scale_factor(schnapps_->selected_view(), ugh_, 0.1f, true);
 //    schnapps_->selected_view().link_object(ugh_test_, true);
@@ -101,7 +105,8 @@ bool Plugin_TubularMesh::enable()
     map3h_->set_bb_vertex_attribute(add_setting("Bounding box attribute", "position").toString());
     map3h_->notify_attribute_added(M3Vertex::ORBIT, "position");
     map3h_->notify_connectivity_change();
-
+    ugh_->notify_attribute_change(UGVertex::ORBIT, "position");
+    ugh_->notify_connectivity_change();
     return true;
 }
 

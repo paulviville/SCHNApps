@@ -42,8 +42,8 @@ class UndirectedGraphHandler;
 }
 
 namespace plugin_import { class Plugin_Import; }
-
 namespace plugin_polyline_render { class Plugin_PolylineRender; }
+namespace plugin_volume_render { class Plugin_VolumeRender; }
 
 namespace plugin_tubular_mesh
 {
@@ -80,7 +80,7 @@ private:
 	plugin_import::Plugin_Import* plugin_import_;
 	plugin_cmap_provider::Plugin_CMapProvider* plugin_cmap_provider_;
     plugin_polyline_render::Plugin_PolylineRender* plugin_polyline_render_;
-
+    plugin_volume_render::Plugin_VolumeRender* plugin_volume_render_;
     UndirectedGraphHandler* ugh_;
     CMap3Handler* map3h_;
 };
