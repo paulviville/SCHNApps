@@ -72,9 +72,10 @@ bool Plugin_TubularMesh::enable()
     plugin_polyline_render_ = static_cast<plugin_polyline_render::Plugin_PolylineRender*>(schnapps_->enable_plugin(plugin_polyline_render::Plugin_PolylineRender::plugin_name()));
     plugin_volume_render_ = static_cast<plugin_volume_render::Plugin_VolumeRender*>(schnapps_->enable_plugin(plugin_volume_render::Plugin_VolumeRender::plugin_name()));
 
-    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/two_intersections.cg");
+//    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/two_intersections.cg");
 //    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/intersection_alone.cg");
-//    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/intersection.cg");
+//    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/intersections_2D.cg");
+    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/stickwoman.cg");
     plugin_polyline_render_->set_edge_color(schnapps_->selected_view(), ugh_, QColor(255,255,255), true);
     plugin_polyline_render_->set_vertex_scale_factor(schnapps_->selected_view(), ugh_, 0.1f, true);
 //    schnapps_->selected_view().link_object(ugh_test_, true);

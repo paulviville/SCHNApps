@@ -113,7 +113,7 @@ void Vessels_Builder::build_intersections(){
 }
 
 void Vessels_Builder::build_intersection3(UGVertex ugv){
-    Scalar radius = Scalar(0.75f);
+    Scalar radius = Scalar(0.25f);
     VEC3 Ctr = UGposition_[ugv];
     std::vector<VEC3> P, PV, C, Q, M, E, F;
     std::vector<Dart> PD;
@@ -156,16 +156,16 @@ void Vessels_Builder::build_intersection3(UGVertex ugv){
     F.push_back((M[1] + M[2] + Q[1]) / Scalar(3.0f));
     F.push_back((M[2] + M[0] + Q[1]) / Scalar(3.0f));
 
-//    /// Projection sur la shère de centre Ctr de l'embranchement
-//    for(uint32 i = 0; i < E.size(); i++){
-//        E[i] = (E[i] - Ctr).normalized();
-//        E[i] = Ctr + E[i] * radius;
-//    }
+    /// Projection sur la shère de centre Ctr de l'embranchement
+    for(uint32 i = 0; i < E.size(); i++){
+        E[i] = (E[i] - Ctr).normalized();
+        E[i] = Ctr + E[i] * radius;
+    }
 
-//    for(uint32 i = 0; i < F.size(); i++){
-//        F[i] = (F[i] - Ctr).normalized();
-//        F[i] = Ctr + F[i] * radius;
-//    }
+    for(uint32 i = 0; i < F.size(); i++){
+        F[i] = (F[i] - Ctr).normalized();
+        F[i] = Ctr + F[i] * radius;
+    }
 
     /// building CMAP3
     auto& ca = m3builder_->attribute_container<M3Vertex::ORBIT>();
@@ -300,65 +300,23 @@ void Vessels_Builder::compute_tangent_3_1(Dart d){
 
 void Vessels_Builder::build_branch(Dart d){
     cgogn_log_info("looping1");
-    Scalar radius = Scalar(0.75f);
+    Scalar radius = Scalar(0.25f);
     auto& ca = m3builder_->attribute_container<M3Vertex::ORBIT>();
-//    // entrance connection darts and
-//    std::vector<Dart> D0 = {D, cmap3_->phi<1232>(D), cmap3_->phi<11232>(D), cmap3_->phi<111232>(D), cmap3_->phi<1112321232>(D), cmap3_->phi<11123211232>(D)};
-//    std::vector<uint32> E0;
-//    E0.push_back(cmap3_->embedding(D0[2], M3Vertex::ORBIT));
-//    E0.push_back(cmap3_->embedding(D0[1], M3Vertex::ORBIT));
-//    E0.push_back(cmap3_->embedding(cmap3_->phi<1>(D0[0]), M3Vertex::ORBIT));
-//    E0.push_back(cmap3_->embedding(D0[0], M3Vertex::ORBIT));
-//    E0.push_back(cmap3_->embedding(cmap3_->phi<111>(D0[3]), M3Vertex::ORBIT));
-//    E0.push_back(cmap3_->embedding(D0[4], M3Vertex::ORBIT));
-//    E0.push_back(cmap3_->embedding(cmap3_->phi<111>(D0[5]), M3Vertex::ORBIT));
-//    E0.push_back(cmap3_->embedding(cmap3_->phi<11>(D0[5]), M3Vertex::ORBIT));
-//    E0.push_back(cmap3_->embedding(cmap3_->phi<11>(D0[4]), M3Vertex::ORBIT));
-//    E0.push_back(cmap3_->embedding(cmap3_->phi<11>(D0[2]), M3Vertex::ORBIT));
-//    E0.push_back(cmap3_->embedding(cmap3_->phi<11>(D0[1]), M3Vertex::ORBIT));
 
     Dart d0 = d;
     Dart d1 = ug_->alpha0(d0);
     uint32 valence = ug_->nb_darts_of_orbit(UGVertex(d1));
 
-    while(valence <= 2){
+    while(true){
         cgogn_log_info("valence: ") << valence << " " << d0 << " " << d1 ;
         VEC3 T = UGTangents_[d1];
         VEC3 N = UGNormals_[d1];
         VEC3 M = (N.cross(T)).normalized();
-        cgogn_log_info("N: ") << N[0] << " " << N[1] << " " << N[2];
-        cgogn_log_info("M: ") << M[0] << " " << M[1] << " " << M[2];
-        cgogn_log_info("T: ") << T[0] << " " << T[1] << " " << T[2];
-        UGVertex v0 = ug_->add_vertex();
-        UGVertex v1 = ug_->add_vertex();
-        UGVertex v2 = ug_->add_vertex();
-        UGVertex v3 = ug_->add_vertex();
-        UGVertex v4 = ug_->add_vertex();
-        UGVertex v5 = ug_->add_vertex();
-        UGVertex v6 = ug_->add_vertex();
-        UGVertex v7 = ug_->add_vertex();
-        UGVertex v8 = ug_->add_vertex();
-        UGVertex v9 = ug_->add_vertex();
-        UGposition_[v0] = UGposition_[d1] + M * radius;
-        UGposition_[v1] = UGposition_[d1] - M * radius;
-        UGposition_[v2] = UGposition_[d1] + N * radius;
-        UGposition_[v3] = UGposition_[d1] - N * radius;
-        UGposition_[v4] = UGposition_[d1] + (M + N).normalized() * radius;
-        UGposition_[v5] = UGposition_[d1] - (M + N).normalized() * radius;
-        UGposition_[v6] = UGposition_[d1] + (M - N).normalized() * radius;
-        UGposition_[v7] = UGposition_[d1] - (M - N).normalized() * radius;
-        UGposition_[v8] = UGposition_[d1] + N * radius * Scalar(0.5f);
-        UGposition_[v9] = UGposition_[d1] - N * radius * Scalar(0.5f);
-
 
         Dart D = UGConnections_[d0];
-//        cgogn_log_info("d: ") << a
         if(D.is_nil()){
             cgogn_log_info("Branch error: connection is nil") << d0 << " " << D;
             return;
-        }
-        else{
-            cgogn_log_info("Branch good") << d0 << " " << D;
         }
 
         // entrance connection darts and
@@ -388,6 +346,7 @@ void Vessels_Builder::build_branch(Dart d){
         m3builder_->sew_volumes_fp(cmap3_->phi<12>(D1[4]), cmap3_->phi<1112>(D1[5]));
 
         std::vector<uint32> E1;
+        /// gestion des extrémités et articulations
         if(valence <= 2){
             E1 = {ca.insert_lines<1>(), ca.insert_lines<1>(), ca.insert_lines<1>(), ca.insert_lines<1>(), ca.insert_lines<1>(), ca.insert_lines<1>(),
                   ca.insert_lines<1>(), ca.insert_lines<1>(), ca.insert_lines<1>(), ca.insert_lines<1>(), ca.insert_lines<1>()
@@ -404,6 +363,35 @@ void Vessels_Builder::build_branch(Dart d){
             (*M3position_)[E1[9]] = UGposition_[d1] + (N + M).normalized() * radius;
             (*M3position_)[E1[10]] = UGposition_[d1] + N * radius;
         }
+        /// gestion des embranchements
+        if(valence >= 3){
+            Dart E = UGConnections_[d1];
+            cgogn_log_info("Branching point") << E ;
+            if(E.is_nil()){
+                cgogn_log_info("Branch error: connection is nil") << E ;
+            }
+
+            /// Inversion des connections si les normales sont trop différentes
+            if(UGNormals_[UGVertex(d0)].dot(UGNormals_[UGVertex(d1)]) >= 0)
+                E = cmap3_->phi<1123211>(E);
+            else
+                E = cmap3_->phi<111232111>(E);
+
+            std::vector<Dart> D2 = {E, cmap3_->phi<111232>(E), cmap3_->phi<11232>(E), cmap3_->phi<1232>(E), cmap3_->phi<1232111232>(E), cmap3_->phi<123211232>(E)};
+            E1 = {
+                cmap3_->embedding(D2[3], M3Vertex::ORBIT),
+                cmap3_->embedding(D2[2], M3Vertex::ORBIT),
+                cmap3_->embedding(D2[0], M3Vertex::ORBIT),
+                cmap3_->embedding(cmap3_->phi<1>(D2[0]), M3Vertex::ORBIT),
+                cmap3_->embedding(cmap3_->phi<2>(D2[5]), M3Vertex::ORBIT),
+                cmap3_->embedding(D2[5], M3Vertex::ORBIT),
+                cmap3_->embedding(cmap3_->phi<11>(D2[5]), M3Vertex::ORBIT),
+                cmap3_->embedding(cmap3_->phi<12>(D2[4]), M3Vertex::ORBIT),
+                cmap3_->embedding(cmap3_->phi<11>(D2[2]), M3Vertex::ORBIT),
+                cmap3_->embedding(cmap3_->phi<11>(D2[1]), M3Vertex::ORBIT),
+                cmap3_->embedding(cmap3_->phi<111>(D2[1]), M3Vertex::ORBIT),
+            };
+        }
 
         embed_hexa(D1[0], {E0[2], E0[3], E0[0], E0[1], E1[2], E1[3], E1[0], E1[1]});
         embed_hexa(D1[1], {E0[2], E0[1], E0[9], E0[10], E1[2], E1[1], E1[9], E1[10]});
@@ -417,31 +405,13 @@ void Vessels_Builder::build_branch(Dart d){
             d0 = ug_->alpha1(d1);
             d1 = ug_->alpha0(d0);
         }
+        if(valence == 3) break;
 
 
         UGConnections_[d0] = cmap3_->phi<2112>(D1[0]);
-        cgogn_log_info("next: ") << d0 << " " << D1[0] << " " << UGConnections_[d0];
         valence = ug_->nb_darts_of_orbit(UGVertex(d1));
     }
 
-//    if(valence == 1){
-//        UGVertex v0 = ug_->add_vertex();
-//        UGVertex v1 = ug_->add_vertex();
-//        UGVertex v2 = ug_->add_vertex();
-//        UGVertex v3 = ug_->add_vertex();
-//        UGVertex v4 = ug_->add_vertex();
-//        UGVertex v5 = ug_->add_vertex();
-//        UGVertex v6 = ug_->add_vertex();
-//        UGVertex v7 = ug_->add_vertex();
-//        UGposition_[v0] = UGposition_[d1] + M * radius;
-//        UGposition_[v1] = UGposition_[d1] - M * radius;
-//        UGposition_[v2] = UGposition_[d1] + N * radius;
-//        UGposition_[v3] = UGposition_[d1] - N * radius;
-//        UGposition_[v4] = UGposition_[d1] + (M + N).normalized() * radius;
-//        UGposition_[v5] = UGposition_[d1] - (M + N).normalized() * radius;
-//        UGposition_[v6] = UGposition_[d1] + (M - N).normalized() * radius;
-//        UGposition_[v7] = UGposition_[d1] - (M - N).normalized() * radius;
-//    }
 }
 
 cgogn::Dart Vessels_Builder::add_hexa(){
