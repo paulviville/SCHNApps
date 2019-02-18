@@ -34,6 +34,7 @@ target_link_libraries(${PROJECT_NAME}
         schnapps::import
         schnapps::polyline_render
         schnapps::volume_render
+
 )
 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/

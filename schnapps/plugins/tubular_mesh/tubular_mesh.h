@@ -83,6 +83,7 @@ private:
     plugin_volume_render::Plugin_VolumeRender* plugin_volume_render_;
     UndirectedGraphHandler* ugh_;
     CMap3Handler* map3h_;
+    CMap2Handler* map2h_;
 };
 
 } // namespace plugin_tubular_mesh

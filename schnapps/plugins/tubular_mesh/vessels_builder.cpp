@@ -1,7 +1,9 @@
 #include <schnapps/plugins/tubular_mesh/vessels_builder.h>
 
 #include <cgogn/geometry/types/eigen.h>
-
+#include <cgogn/geometry/functions/orientation.h>
+#include <cgogn/geometry/functions/intersection.h>
+#include <cgogn/geometry/functions/basics.h>
 namespace schnapps
 {
 
@@ -12,6 +14,8 @@ void Vessels_Builder::set_skeleton(UGraph* ug){
     ug_marker_ = new UGDartMarker(*ug_);
     UGNormals_ = ug_->add_attribute<VEC3, UGVertex>("normals");
     UGTangents_ = ug_->add_attribute<VEC3, UGVertex>("tangents");
+    UGposition_ = ug_->template get_attribute<VEC3, UGVertex>("position");
+
 }
 
 void Vessels_Builder::set_cmap3(CMap3* cmap3){
@@ -26,9 +30,11 @@ void Vessels_Builder::set_cmap3(CMap3* cmap3){
 }
 
 bool Vessels_Builder::compute_cmap3(){
+    subdivide_graph();
+    UGConnections_ = ug_->template add_attribute<Dart, UndirectedGraph::CDart>("connections");
     analyse_graph();
     build_cmap3();
-    clean_up();
+//    clean_up();
     return true;
 }
 
@@ -49,14 +55,14 @@ void Vessels_Builder::find_ends(){
                 extremities_.push_back(v);
             case 2: // joint
             break;
-            case 3: // intersection 3
+            case 3: // intersection 3+
+            default:
                 extremities_.push_back(v);
                 intersections_.push_back(v);
             break;
-            default:
-            break;
         }
     });
+    cgogn_log_info("extremities: ") << extremities_.size();
 }
 
 void Vessels_Builder::find_branches(){
@@ -97,26 +103,69 @@ void Vessels_Builder::check_isolated_loops(){
     });
 }
 
+void Vessels_Builder::subdivide_graph(){
+    Scalar radius(0.5);
+    ug_marker_->unmark_all();
+    bool over = false;
+    while(!over){
+        over = true;
+        ug_->foreach_cell([&](UGEdge e){
+            if(!ug_marker_->is_marked(e.dart)){
+                Dart v0 = e.dart;
+                Dart v1 = ug_->alpha0(e.dart);
+                VEC3 edge_vec = UGposition_[v0] - UGposition_[v1];
+                cgogn_log_info("edge: ") << edge_vec.norm();
+                if(edge_vec.norm() > 2 * radius){
+                    over &= false;
+                    UGVertex vert = ug_->add_vertex();
+                    UGposition_[vert] = (UGposition_[v0] + UGposition_[v1]) * Scalar(0.5);
+//                    UGposition_[vert] += VEC3::Random() * 0.1;
+                    cgogn_log_info("length longer than radius: ") << 1;
+                    ug_->connect_vertices(UGVertex(v0), vert);
+                    ug_->connect_vertices(UGVertex(v1), vert);
+                    ug_->disconnect_vertices(e);
+//                    ug_marker_->mark_orbit(e);
+                }
+                else{
+                    ug_marker_->mark_orbit(e);
+                }
+            }
+        });
+    }
+    ug_marker_->unmark_all();
+}
+
 void Vessels_Builder::build_cmap3(){
     cgogn_log_info("Building cmap3");
-    UGposition_ = ug_->template get_attribute<VEC3, UGVertex>("position");
-    UGConnections_ = ug_->template add_attribute<Dart, UndirectedGraph::CDart>("connections");
     build_intersections();
     compute_tangents();
     build_branches();
 }
 
 void Vessels_Builder::build_intersections(){
+    intersection_m2builder_.set_cmap2(cmap2_);
+    intersection_m2builder_.set_ugraph(ug_);
+
     for(UGVertex ugv : intersections_){
         build_intersection3(ugv);
+//                build_inter3(ugv);
+//        intersection_m2builder_.build_intersection(ugv);
     }
 }
 
 void Vessels_Builder::build_intersection3(UGVertex ugv){
-    Scalar radius = Scalar(0.25f);
+    Scalar radius = Scalar(0.5f);
     VEC3 Ctr = UGposition_[ugv];
     std::vector<VEC3> P, PV, C, Q, M, E, F;
     std::vector<Dart> PD;
+
+    ug_->foreach_dart([&](Dart d){
+        if(ug_->is_boundary(d))
+                cgogn_log_info("boundary: ") << ug_->is_boundary(d);
+        if(ug_->is_boundary(ug_->alpha0(d)))
+                cgogn_log_info("boundary: ") << ug_->is_boundary(d);
+        cgogn_log_info("emb:") << d << " " <<ug_->embedding(d, UndirectedGraph::CDart::ORBIT);
+    });
 
     ug_->foreach_adjacent_vertex_through_edge(ugv, [&](UGVertex ugv2){
         VEC3 v = (UGposition_[ugv2] - Ctr).normalized();
@@ -300,7 +349,7 @@ void Vessels_Builder::compute_tangent_3_1(Dart d){
 
 void Vessels_Builder::build_branch(Dart d){
     cgogn_log_info("looping1");
-    Scalar radius = Scalar(0.25f);
+    Scalar radius = Scalar(0.5f);
     auto& ca = m3builder_->attribute_container<M3Vertex::ORBIT>();
 
     Dart d0 = d;
@@ -458,6 +507,292 @@ void Vessels_Builder::clean_up(){
     ug_->remove_attribute(UGConnections_);
     ug_->remove_attribute(UGTangents_);
     ug_->remove_attribute(UGNormals_);
+}
+
+
+Intersection_M2Builder::Intersection_M2Builder() : radius_(1.0), cmap2_(nullptr), ug_(nullptr){
+
+}
+
+void Intersection_M2Builder::set_cmap2(CMap2 *cmap2){
+    cmap2_ = cmap2;
+    cmap2_->clear_and_remove_attributes();
+
+    m2builder_ = new M2Builder(*cmap2_);
+}
+
+void Intersection_M2Builder::set_ugraph(UGraph *ug){
+    ug_ = ug;
+    UGposition_ = ug_->template get_attribute<VEC3, UGVertex>("position");
+}
+
+void Intersection_M2Builder::build_intersection(UGVertex ugv){
+    cmap2_->clear_and_remove_attributes();
+
+    Ppos_.clear();
+    Pdart_.clear();
+
+    ugv_ = ugv;
+    center_ = UGposition_[ugv];
+    radius_ = Scalar(0.5); /// PLACEHOLDER
+
+    get_intersection_data();
+    build_all();
+}
+
+bool Intersection_M2Builder::in_quad(Dart face, VEC3 P){
+    using cgogn::geometry::intersection_ray_triangle;
+
+    VEC3 A = M2Position_[face];
+    VEC3 B = M2Position_[cmap2_->phi<1>(face)];
+    VEC3 C = M2Position_[cmap2_->phi<11>(face)];
+    VEC3 D = M2Position_[cmap2_->phi<111>(face)];
+    VEC3 DIR = P - center_;
+
+    return (intersection_ray_triangle(center_, DIR, A, B, C)
+            || intersection_ray_triangle(center_, DIR, A, C, D));
+}
+
+void Intersection_M2Builder::get_intersection_data(){
+    ug_->foreach_adjacent_vertex_through_edge(ugv_, [&](UGVertex ugv){
+        Ppos_.push_back(project_on_sphere(UGposition_[ugv]));
+        Pdart_.push_back(ug_->alpha0(ugv.dart));
+                UGVertex v = ug_->add_vertex();
+                UGposition_[v] = project_on_sphere(UGposition_[ugv]);
+    });
+}
+
+void Intersection_M2Builder::build_core(){
+    std::vector<VEC3> Qp, Mp;
+    std::vector<Dart> Fd;
+
+    Fd = {m2builder_->add_face_topo_fp(4), m2builder_->add_face_topo_fp(4), m2builder_->add_face_topo_fp(4)};
+
+    m2builder_->phi2_sew(Fd[0], cmap2_->phi<1>(Fd[2]));
+    m2builder_->phi2_sew(cmap2_->phi<1>(Fd[0]), Fd[1]);
+    m2builder_->phi2_sew(cmap2_->phi<11>(Fd[0]), cmap2_->phi_1(Fd[1]));
+    m2builder_->phi2_sew(cmap2_->phi_1(Fd[0]), cmap2_->phi<11>(Fd[2]));
+    m2builder_->phi2_sew(cmap2_->phi<1>(Fd[1]), Fd[2]);
+    m2builder_->phi2_sew(cmap2_->phi<11>(Fd[1]), cmap2_->phi_1(Fd[2]));
+
+    M2Position_ = cmap2_->add_attribute<VEC3, M2Vertex>("position");
+    M2FacePoints_ = cmap2_->add_attribute<VEC3, M2Face>("face_points");
+    M2FaceBranch_ = cmap2_->add_attribute<Dart, M2Face>("face_branches");
+
+    VEC3 V = (Ppos_[1] - Ppos_[0]).cross(Ppos_[2] - Ppos_[0]).normalized();
+    Qp = {center_ + V * radius_, center_ - V * radius_};
+    Mp = {center_ + (Ppos_[1]-Ppos_[0]).normalized().cross(V) * radius_,
+         center_ + (Ppos_[2]-Ppos_[1]).normalized().cross(V) * radius_,
+         center_ + (Ppos_[0]-Ppos_[2]).normalized().cross(V) * radius_};
+
+    M2Position_[M2Vertex(Fd[0])] = Mp[2];
+    M2Position_[M2Vertex(Fd[1])] = Mp[0];
+    M2Position_[M2Vertex(Fd[2])] = Mp[1];
+    M2Position_[M2Vertex(cmap2_->phi<1>(Fd[0]))] = Qp[1];
+    M2Position_[M2Vertex(cmap2_->phi_1(Fd[0]))] = Qp[0];
+
+    M2FacePoints_[M2Face(Fd[0])] = Ppos_[0];
+    M2FacePoints_[M2Face(Fd[1])] = Ppos_[1];
+    M2FacePoints_[M2Face(Fd[2])] = Ppos_[2];
+
+    M2FaceBranch_[M2Face(Fd[0])] = Pdart_[0];
+    M2FaceBranch_[M2Face(Fd[1])] = Pdart_[1];
+    M2FaceBranch_[M2Face(Fd[2])] = Pdart_[2];
+}
+
+void Intersection_M2Builder::build_all(){
+    build_core();
+//    move_points();
+    for(uint i = 3; i < Ppos_.size(); i++){
+        add_point(i);
+    }
+    move_points();
+}
+
+void Intersection_M2Builder::add_point(uint32 pt_nb){
+    VEC3 P0 = Ppos_[pt_nb];
+    Dart F0 = Pdart_[pt_nb];
+    M2Face face2cut;
+    std::vector<VEC3> Quadp; //positions
+    std::vector<Dart> Quadd; //darts
+
+    cmap2_->foreach_cell([&](M2Face f) -> bool {
+        if(in_quad(f.dart, P0)){
+            Quadd = {f.dart, cmap2_->phi<1>(f.dart), cmap2_->phi<11>(f.dart), cmap2_->phi<111>(f.dart)};
+            Quadp = {M2Position_[Quadd[0]], M2Position_[Quadd[1]], M2Position_[Quadd[2]], M2Position_[Quadd[3]]};
+            face2cut = f; return false;
+        }
+        return true;
+    });
+
+    VEC3 P1 = M2FacePoints_[M2Face(face2cut)];
+    Dart F1 = M2FaceBranch_[M2Face(face2cut)];
+
+    Dart cut0, cut1;
+    VEC3 AC = (Quadp[2] - Quadp[0]).normalized();
+    VEC3 BD = (Quadp[3] - Quadp[1]).normalized();
+    VEC3 P0P1 = (P1 - P0).normalized();
+    if(abs(AC.dot(P0P1)) < abs(BD.dot(P0P1))){
+        cut0 = Quadd[0]; cut1 = Quadd[2];
+    } else {
+        cut0 = Quadd[1]; cut1 = Quadd[3];
+    }
+    cmap2_->cut_face(cut0, cut1);
+    M2Vertex v = cmap2_->cut_edge(M2Edge(cmap2_->phi_1(cut0)));
+    M2Position_[v] = project_on_sphere((P0 + P1) * Scalar(0.5));
+
+    Dart newFace, oldFace;
+    VEC3 out0 = M2Position_[v] - center_;
+    VEC3 out1 = ((P0 - M2Position_[cut0]).normalized().cross((P1 - M2Position_[cut0]).normalized()));
+    if(out1.dot(out0) >= 0){
+        newFace = cut0; oldFace = cut1;
+    }
+    else{
+        newFace = cut1; oldFace = cut0;
+    }
+
+    M2FaceBranch_[M2Face(newFace)] = F0;
+    M2FaceBranch_[M2Face(oldFace)] = F1;
+    M2FacePoints_[M2Face(newFace)] = P0;
+    M2FacePoints_[M2Face(oldFace)] = P1;
+
+    move_points(newFace);
+}
+
+VEC3 Intersection_M2Builder::project_on_sphere(VEC3 P){
+    return center_ + (P - center_).normalized() * radius_;
+}
+
+VEC3 Intersection_M2Builder::mean_dir(M2Vertex vert){
+    using Quat = Eigen::Quaterniond;
+
+    uint32 valence = cmap2_->nb_darts_of_orbit(M2Vertex(vert));
+
+    std::vector<Quat> rotations;
+    rotations.reserve(valence);
+
+    VEC3 start = (M2Position_[vert] - center_).normalized();
+    cmap2_->foreach_dart_of_orbit(vert, [&](Dart face){
+        VEC3 dir = (M2FacePoints_[M2Face(face)] - center_).normalized();
+        Quat q = Quat::FromTwoVectors(start, dir);
+        q.normalize();
+        rotations.push_back(q);
+    });
+
+    Eigen::MatrixXd m(4, valence);
+    for(uint32 i = 0; i < valence; ++i){
+        const Quat& q = rotations[i];
+        m.col(i) = VEC4(q.w(), q.x(), q.y(), q.z());
+    }
+
+    Eigen::MatrixXd mm = m * m.transpose();
+    Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(mm);
+    VEC4 r = es.eigenvectors().col(3);
+
+    Quat mean_rot(r[0], r[1], r[2], r[3]);
+    mean_rot.normalize();
+    return mean_rot._transformVector(start) * radius_ + center_;
+
+//    VEC3 mean_dir = (M2Position_[vert] - center_).normalized();
+//    for(uint32 i = 0; i < 50; ++i){
+//    Eigen::Matrix3d rot;
+//    rot.setIdentity();
+//    cmap2_->foreach_dart_of_orbit(vert, [&](Dart face){
+//        VEC3 v = (M2FacePoints_[M2Face(face)] - center_).normalized();
+//        double angle = cgogn::geometry::angle(mean_dir, v);
+//        angle = -1.0 * (M_PI - angle) / 100.0;
+//        Eigen::AngleAxisd aa({ angle, mean_dir.cross(v) });
+//        rot *= aa.toRotationMatrix();
+//    });
+//    mean_dir = rot * mean_dir;
+//    mean_dir.normalize();
+//    }
+//    return -mean_dir * radius_ + center_;
+}
+
+//VEC3 Intersection_M2Builder::mean_dir2(M2Vertex vert){
+
+//}
+
+void Intersection_M2Builder::move_point(Dart vert){
+//    uint32 valence = cmap2_->nb_darts_of_orbit(M2Vertex(vert));
+//    if(valence == 2){
+//        VEC3 V0 = M2FacePoints_[vert];
+//        VEC3 V1 = M2FacePoints_[cmap2_->phi<2>(vert)];
+//        M2Position_[vert] = project_on_sphere((V0 + V1) / Scalar(2));
+//        return;
+//    }
+//    if(valence == 3){
+//        VEC3 V0 = M2FacePoints_[vert];
+//        VEC3 V1 = M2FacePoints_[cmap2_->phi<2>(vert)];
+//        VEC3 V2 = M2FacePoints_[cmap2_->phi<212>(vert)];
+//        VEC3 N = ((V2 - V0).normalized()).cross((V1 - V0).normalized()).normalized();
+//        M2Position_[vert] = center_ + N * radius_;
+//        return;
+//    }
+//    if(valence > 3){
+////        Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic > coord(3, valence);
+////        uint32 i = 0;
+////        cmap2_->foreach_dart_of_orbit(M2Vertex(vert), [&](Dart face){
+////            coord.col(i++) = M2FacePoints_[face];
+////        });
+
+////        VEC3 centroid (coord.row(0).mean(), coord.row(1).mean(), coord.row(2).mean());
+////        coord.row(0).array() -= centroid(0); coord.row(1).array() -= centroid(1); coord.row(2).array() -= centroid(2);
+////        auto svd = coord.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV);
+////        VEC3 N = svd.matrixU().rightCols<1>();
+////        cgogn_log_info("result ") << N[0] << " " << N[1] << " " << N[2];
+////        if(N.dot(centroid - center_) < 0) N = -N;
+
+////        M2Position_[vert] = center_ + N * radius_;
+//        for(uint32 i = 0; i < 10; ++i){
+//        M2Position_[vert] = mean_dir(M2Vertex(vert));
+//        }
+//        return;
+//    }
+//    for(uint32 i = 0; i < 30; ++i){
+    M2Position_[vert] = mean_dir(M2Vertex(vert));
+//    }
+}
+
+cgogn::Dart Intersection_M2Builder::convex_quad(Dart f){
+    Dart res;
+    VEC3 A = M2Position_[M2Vertex(f)];
+    VEC3 B = M2Position_[M2Vertex(cmap2_->phi<1>(f))];
+    VEC3 C = M2Position_[M2Vertex(cmap2_->phi<11>(f))];
+    VEC3 D = M2Position_[M2Vertex(cmap2_->phi<111>(f))];
+    VEC3 AB = B - A;
+    VEC3 AC = C - A;
+    VEC3 AD = D - A;
+    VEC3 N0 = AC.cross(AD);
+    VEC3 N1 = AB.cross(AC);
+    VEC3 N = N0.cross(N1).normalized();
+
+    if(N.dot(AC) < 0){
+        cgogn_log_info("concave: ") << f;
+        res = cmap2_->phi<1>(f);
+    }
+    else{
+        res = f;
+        cgogn_log_info("convexe: ") << f;
+    }
+    return res;
+}
+
+void Intersection_M2Builder::move_points(Dart face){
+    cmap2_->foreach_dart_of_orbit(M2Face(face), [&](Dart vert){
+        move_point(vert);
+    });
+}
+
+void Intersection_M2Builder::move_points(){
+    cmap2_->foreach_cell([&](M2Face face){
+//        convex_quad(face.dart);
+    });
+}
+
+void Intersection_M2Builder::clear(){
+
 }
 
 } // namespace schnapps

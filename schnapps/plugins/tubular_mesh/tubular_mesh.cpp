@@ -37,6 +37,10 @@
 #include <schnapps/plugins/tubular_mesh/vessels_builder.h>
 #include <cgogn/core/graph/undirected_graph_builder.h>
 
+#include <cgogn/geometry/functions/intersection.h>
+#include <cgogn/core/cmap/cmap2.h>
+#include <cgogn/core/cmap/cmap2_builder.h>
+
 namespace schnapps
 {
 
@@ -49,6 +53,8 @@ using UGDartMarker = cgogn::DartMarker<UndirectedGraph>;
 using UGCellCache = cgogn::CellCache<UndirectedGraph>;
 using M3Vertex = CMap3::Vertex;
 using M3Vertex2 = CMap3::Vertex2;
+using M2Vertex = CMap2::Vertex;
+using M2Builder = CMap2::Builder;
 
 Plugin_TubularMesh::Plugin_TubularMesh() :
 	plugin_import_(nullptr),
@@ -73,33 +79,29 @@ bool Plugin_TubularMesh::enable()
     plugin_volume_render_ = static_cast<plugin_volume_render::Plugin_VolumeRender*>(schnapps_->enable_plugin(plugin_volume_render::Plugin_VolumeRender::plugin_name()));
 
 //    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/two_intersections.cg");
-//    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/intersection_alone.cg");
+//    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/intersection3_alone.cg");
 //    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/intersections_2D.cg");
     ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/stickwoman.cg");
+//    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/intersection3_alone.cg");
     plugin_polyline_render_->set_edge_color(schnapps_->selected_view(), ugh_, QColor(255,255,255), true);
     plugin_polyline_render_->set_vertex_scale_factor(schnapps_->selected_view(), ugh_, 0.1f, true);
-//    schnapps_->selected_view().link_object(ugh_test_, true);
+
     UndirectedGraph* ug = ugh_->map();
     UndirectedGraph::VertexAttribute<VEC3> UGposition = ug->template get_attribute<VEC3, UGVertex>("position");
-//    UndirectedGraph::CDartAttribute
+
     map3h_ = plugin_cmap_provider_->add_cmap3("vessels");
     CMap3* map3 = map3h_->map();
 
+    map2h_ = plugin_cmap_provider_->add_cmap2("inter");
+    CMap2* map2 = map2h_->map();
+
     Vessels_Builder VBuilder;
+
     VBuilder.set_skeleton(ug);
     VBuilder.set_cmap3(map3);
 
-
-    UGDartMarker dart_marker(*ug);
-    cgogn_log_info("NB Darts:") << ug->nb_darts();
-
-    UGCellCache initial_cache(*ug);
-    initial_cache.template build<UGEdge>();
-    initial_cache.template build<UGVertex>();
-
-    std::vector<UGVertex> extremities;
-    std::vector<UGVertex> intersections;
-    std::vector<std::pair<Dart, Dart>> branches;
+    VBuilder.cmap2_ = map2;
+    VBuilder.m2builder_ = new M2Builder(*map2);
 
     VBuilder.compute_cmap3();
     map3h_->create_vbo("position");
@@ -108,6 +110,12 @@ bool Plugin_TubularMesh::enable()
     map3h_->notify_connectivity_change();
     ugh_->notify_attribute_change(UGVertex::ORBIT, "position");
     ugh_->notify_connectivity_change();
+
+    map2h_->create_vbo("position");
+    map2h_->set_bb_vertex_attribute(add_setting("Bounding box attribute", "position").toString());
+    map2h_->notify_attribute_added(M2Vertex::ORBIT, "position");
+    map2h_->notify_connectivity_change();
+
     return true;
 }
 
