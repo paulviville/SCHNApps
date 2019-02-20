@@ -102,7 +102,8 @@ private:
 //    CMap3::ChunkArrayContainer* M3Cac_;
     CMap3::ChunkArray<VEC3>* M3position_;
     UndirectedGraph::CDartAttribute<Dart> UGConnections_;
-    UndirectedGraph::VertexAttribute<VEC3> UGNormals_;
+//    UndirectedGraph::VertexAttribute<VEC3> UGNormals_;
+    UndirectedGraph::CDartAttribute<VEC3> UGNormals_;
     UndirectedGraph::VertexAttribute<VEC3> UGTangents_;
 //    UndirectedGraph::EdgeAttribute
     void analyse_graph();
@@ -114,6 +115,7 @@ private:
     void build_cmap3();
     void build_intersections();
     void build_intersection3(UGVertex ugv);
+    void build_intersectionN(UGVertex ugv);
     void build_branches();
     void build_branch(Dart d);
     void compute_tangents();
@@ -121,7 +123,7 @@ private:
     void propagate_normals();
 //    void compute_joint_normals();
 
-
+    Dart create_block(M2Face f);
     Dart add_hexa();
     Dart add_hexa(std::vector<uint32> verts);
     void embed_hexa(Dart d, std::vector<uint32> verts);
