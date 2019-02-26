@@ -138,7 +138,7 @@ void Vessels_Builder::build_cmap3(){
     cgogn_log_info("Building cmap3");
     build_intersections();
     compute_tangents();
-//    build_branches();
+    build_branches();
 }
 
 void Vessels_Builder::build_intersections(){
@@ -161,7 +161,7 @@ void Vessels_Builder::build_intersection3(UGVertex ugv){
 
     ug_->foreach_adjacent_vertex_through_edge(ugv, [&](UGVertex ugv2){
         VEC3 v = (UGposition_[ugv2] - Ctr).normalized();
-        cgogn_log_info("d") << ugv2 ;
+//        cgogn_log_info("d") << ugv2 ;
         P.push_back(Ctr + v * Scalar(radius));
         PD.push_back(ug_->alpha0(ugv2.dart));
     });
@@ -304,7 +304,7 @@ void Vessels_Builder::build_intersectionN(UGVertex ugv){
     cmap2_->foreach_cell([&](M2Face f) -> bool{
 //        cmap2_->phi<2112>(H[5])
         Dart fd = intersection_m2builder_.convex_quad(f.dart);
-        cgogn_log_info("faces: ") << f << " " << fd;
+//        cgogn_log_info("faces: ") << f << " " << fd;
 
         Scalar radius = Scalar(0.5f);
 //        VEC3 Ctr = UGposition_[ugv];
@@ -322,11 +322,29 @@ void Vessels_Builder::build_intersectionN(UGVertex ugv){
               (M[1] + M[2] + Q[1]) / 3,
               (M[2] + M[0] + Q[1]) / 3};
 
+        E[0] = intersection_m2builder_.project_on_sphere(E[0]);
+//        E[1] = intersection_m2builder_.project_on_sphere(E[1]);
+//        E[2] = intersection_m2builder_.project_on_sphere(E[2]);
+        E[3] = intersection_m2builder_.project_on_sphere(E[3]);
+        E[4] = intersection_m2builder_.project_on_sphere(E[4]);
+//        E[5] = intersection_m2builder_.project_on_sphere(E[5]);
+        E[6] = intersection_m2builder_.project_on_sphere(E[6]);
+        E[7] = intersection_m2builder_.project_on_sphere(E[7]);
+//        E[8] = intersection_m2builder_.project_on_sphere(E[8]);
+//        E[3] = intersection_m2builder_.project_on_sphere(E[3]);
+//        E[5] = intersection_m2builder_.project_on_sphere(E[5]);
+//        E[6] = intersection_m2builder_.project_on_sphere(E[6]);
+//        E[8] = intersection_m2builder_.project_on_sphere(E[8]);
+//        F[1] = intersection_m2builder_.project_on_sphere(F[1]);
+        F[0] = intersection_m2builder_.project_on_sphere(F[0]);
+        F[3] = intersection_m2builder_.project_on_sphere(F[3]);
+          //        F[4] = intersection_m2builder_.project_on_sphere(F[4]);
+
         auto& ca = m3builder_->attribute_container<M3Vertex::ORBIT>();
         /// Insertion des points dans la 3 carte
         std::vector<uint32> Ci, Qi, Mi, Ei, Fi;
 
-        uint32 l;
+//        uint32 l;
         for(VEC3 v: C){
             uint32 l = ca.insert_lines<1>();
             (*M3position_)[l] = v;
@@ -391,24 +409,36 @@ void Vessels_Builder::build_intersectionN(UGVertex ugv){
         UGConnections_[M2FaceBranch[f]] = cmap3_->phi<2121>(H[0]);
         UGNormals_[M2FaceBranch[f]] = (C[1] - C[0]).normalized();
 
-        M2BlocConnections[fd] = cmap3_->phi<12>(H[4]);
-        M2BlocConnections[cmap2_->phi<1>(fd)] = cmap3_->phi<112>(H[7]);
-        M2BlocConnections[cmap2_->phi<11>(fd)] = cmap3_->phi<12112>(H[2]);
-        M2BlocConnections[cmap2_->phi<111>(fd)] = cmap3_->phi<1112>(H[3]);
+//        M2BlocConnections[fd] = cmap3_->phi<12>(H[4]);
+//        M2BlocConnections[cmap2_->phi<1>(fd)] = cmap3_->phi<112>(H[7]);
+//        M2BlocConnections[cmap2_->phi<11>(fd)] = cmap3_->phi<12112>(H[2]);
+//        M2BlocConnections[cmap2_->phi<111>(fd)] = cmap3_->phi<1112>(H[3]);
+
+        M2BlocConnections[fd] = cmap3_->phi<112111>(H[5]);
+        M2BlocConnections[cmap2_->phi<1>(fd)] = cmap3_->phi<1>(H[7]);
+        M2BlocConnections[cmap2_->phi<11>(fd)] = cmap3_->phi<111>(H[0]);
+        M2BlocConnections[cmap2_->phi<111>(fd)] = cmap3_->phi<112111>(H[3]);
 
         return true;
     });
 
+    uint32 n = 0;
     cmap2_->foreach_cell([&](M2Edge e){
+        n++;
         Dart d0 = M2BlocConnections[e.dart];
         Dart d1 = M2BlocConnections[cmap2_->phi2(e.dart)];
         m3builder_->sew_volumes_fp(cmap3_->phi<111232>(d0), cmap3_->phi<111>(d1));
-        cgogn_log_info("darts: ") << d0 << "|" << cmap3_->phi<1>(d0) << "|" << cmap3_->phi<11>(d0) << "|" << cmap3_->phi<111>(d0) << "|" << cmap3_->phi<1111>(d0);
-        cgogn_log_info("darts2: ") <<  cmap3_->phi<111>(d0)  << "|" << cmap3_->phi<111232>(d1);
         m3builder_->sew_volumes_fp(cmap3_->phi<111>(d0), cmap3_->phi<111232>(d1));
         m3builder_->sew_volumes_fp(cmap3_->phi<11232>(d0), cmap3_->phi<11232111>(d1));
+        cgogn_log_info("Ds: ") << n << " " << cmap3_->phi3(cmap3_->phi<111232>(d0)) << " " << cmap3_->phi<111232>(d0) << " " << cmap3_->phi<111>(d1);
+        cgogn_log_info("Ds: ") << n << " " << cmap3_->phi3(cmap3_->phi<111>(d0)) << " " << cmap3_->phi<111>(d0) << " " << cmap3_->phi<111232>(d1);
+        cgogn_log_info("Ds: ") << n << " " << cmap3_->phi3(cmap3_->phi<11232>(d0)) << " " << cmap3_->phi<11232>(d0) << " " << cmap3_->phi<11232111>(d1);
     });
+    cgogn_log_info("edges: ") << n;
 
+    m3builder_->close_map();
+    cmap3_->check_map_integrity();
+//    cmap2_->enforce_unique_orbit_embedding
 }
 
 //Dart Vessels_Builder::create_block(M2Face f){
@@ -467,7 +497,7 @@ void Vessels_Builder::compute_tangent_3_1(Dart d){
 
 void Vessels_Builder::build_branch(Dart d){
     cgogn_log_info("looping1");
-    Scalar radius = Scalar(0.25f);
+    Scalar radius = Scalar(0.5f);
     auto& ca = m3builder_->attribute_container<M3Vertex::ORBIT>();
 
     Dart d0 = d;
@@ -573,7 +603,7 @@ void Vessels_Builder::build_branch(Dart d){
             d0 = ug_->alpha1(d1);
             d1 = ug_->alpha0(d0);
         }
-        if(valence == 3) break;
+        if(valence >= 3) break;
 
 
         UGConnections_[d0] = cmap3_->phi<2112>(D1[0]);

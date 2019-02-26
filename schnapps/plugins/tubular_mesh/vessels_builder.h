@@ -31,6 +31,7 @@ public:
     void set_ugraph(UGraph* ug);
     void build_intersection(UGVertex ugv);
     Dart convex_quad(Dart f);
+    VEC3 project_on_sphere(VEC3 p);
 
 private:
     CMap2* cmap2_;
@@ -55,7 +56,6 @@ private:
     void build_core();
     void build_all();
     void add_point(uint32 pt_nb);
-    VEC3 project_on_sphere(VEC3 p);
     void move_points(Dart face);
     void move_point(Dart vert);
     void move_points();

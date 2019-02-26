@@ -81,8 +81,8 @@ bool Plugin_TubularMesh::enable()
 //    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/two_intersections.cg");
 //    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/intersection3_alone.cg");
 //    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/intersections_2D.cg");
-//    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/stickwoman.cg");
-    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/intersection4_alone.cg");
+    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/stickwoman.cg");
+//    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/intersection4_alone.cg");
     plugin_polyline_render_->set_edge_color(schnapps_->selected_view(), ugh_, QColor(255,255,255), true);
     plugin_polyline_render_->set_vertex_scale_factor(schnapps_->selected_view(), ugh_, 0.1f, true);
 
@@ -115,7 +115,9 @@ bool Plugin_TubularMesh::enable()
     map2h_->set_bb_vertex_attribute(add_setting("Bounding box attribute", "position").toString());
     map2h_->notify_attribute_added(M2Vertex::ORBIT, "position");
     map2h_->notify_connectivity_change();
-
+//    uint32 l =  0;
+//    l--;
+//    cgogn_log_info("test: ") << l ;
     return true;
 }
 
