@@ -84,6 +84,7 @@ public:
     void set_skeleton(UGraph* ug);
     void set_cmap3(CMap3* cmap3);
     bool compute_cmap3();
+    void graph_stats();
 
     CMap2* cmap2_;
     M2Builder* m2builder_;
