@@ -56,6 +56,8 @@ using M3Vertex2 = CMap3::Vertex2;
 using M2Vertex = CMap2::Vertex;
 using M2Builder = CMap2::Builder;
 
+using namespace vessels_building;
+
 Plugin_TubularMesh::Plugin_TubularMesh() :
 	plugin_import_(nullptr),
 	plugin_cmap_provider_(nullptr),
@@ -81,9 +83,9 @@ bool Plugin_TubularMesh::enable()
 //    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/two_intersections.cg");
 //    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/intersection3_alone.cg");
 //    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/intersections_2D.cg");
-//    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/stickwoman.cg");
-    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/ReseauVasculaire003.cg");
-//    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/intersection5_alone.cg");
+    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/stickwoman.cg");
+//    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/ReseauVasculaire003.cg");
+//    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/intersection4_alone.cg");
     plugin_polyline_render_->set_edge_color(schnapps_->selected_view(), ugh_, QColor(255,255,255), true);
     plugin_polyline_render_->set_vertex_scale_factor(schnapps_->selected_view(), ugh_, 0.1f, true);
 
@@ -96,17 +98,19 @@ bool Plugin_TubularMesh::enable()
     map2h_ = plugin_cmap_provider_->add_cmap2("inter");
     CMap2* map2 = map2h_->map();
 
-    Vessels_Builder VBuilder;
+    build_hexmesh(*ug, *map3, *map2);
 
-    VBuilder.set_skeleton(ug);
-    VBuilder.graph_stats();
+//    Vessels_Builder VBuilder;
 
-    VBuilder.set_cmap3(map3);
+//    VBuilder.set_skeleton(ug);
+//    VBuilder.graph_stats();
 
-    VBuilder.cmap2_ = map2;
-    VBuilder.m2builder_ = new M2Builder(*map2);
+//    VBuilder.set_cmap3(map3);
 
-    VBuilder.compute_cmap3();
+//    VBuilder.cmap2_ = map2;
+//    VBuilder.m2builder_ = new M2Builder(*map2);
+
+//    VBuilder.compute_cmap3();
     map3h_->create_vbo("position");
     map3h_->set_bb_vertex_attribute(add_setting("Bounding box attribute", "position").toString());
     map3h_->notify_attribute_added(M3Vertex::ORBIT, "position");
