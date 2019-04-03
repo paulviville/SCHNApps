@@ -35,6 +35,7 @@ namespace vessels_building{
     using M2Volume = CMap2::Volume;
 
     using CMap3 = cgogn::CMap3;
+    using M3DartMarker = cgogn::DartMarker<CMap3>;
     using M3Vertex = CMap3::Vertex;
     using M3Vertex2 = CMap3::Vertex2;
     using M3Builder = CMap3::Builder;
@@ -60,6 +61,9 @@ namespace vessels_building{
         CMap2::EdgeAttribute<VEC3> edge_pos;
         CMap2::CDartAttribute<Dart> connections;
         CMap2::VolumeAttribute<VEC3> center;
+
+        CMap2::FaceAttribute<VEC3> f_point;
+        CMap2::FaceAttribute<Dart> f_branch;
     } CMap2_Attributes;
 
 
@@ -101,7 +105,6 @@ namespace vessels_building{
     bool build_connection_interfaces(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2);
     bool build_interface_1(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2, UGVertex ugv);
     bool build_interface_2(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2, UGVertex ugv);
-//    bool build_interface_3(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2, UGVertex ugv);
     bool build_interface_n(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2, UGVertex ugv);
 
     bool complete_intersections(UGraph& ug, UG_Attributes& ug_attribs, const Graph& graph, CMap2& cmap2, CMap2_Attributes& m2_attribs);
@@ -109,23 +112,28 @@ namespace vessels_building{
     bool complete_intersection_3(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2, CMap2_Attributes& m2_attribs, UGVertex ugv);
     bool complete_intersection_n(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2, CMap2_Attributes& m2_attribs, UGVertex ugv);
     bool create_intersection_frames(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2, CMap2_Attributes& m2_attribs, UGVertex ugv);
+    Dart convex_quad(CMap2& cmap2, CMap2_Attributes& m2_attribs, Dart f);
+    VEC3 mean_dir(VEC3 center, Scalar radius, VEC3 point, std::vector<VEC3> points);
 
     /// Propagate frames from branching points using double reflection
     bool propagate_frames(UGraph& ug, UG_Attributes& ug_attribs, const Graph& graph);
-    bool propagate_frame_n_1(UGraph& ug, UG_Attributes& ug_attribs, Dart d0);
-    bool propagate_frame_n_n(UGraph& ug, UG_Attributes& ug_attribs, Dart d0);
+    bool propagate_frame_n_1(UGraph& ug, UG_Attributes& ug_attribs, Dart d);
+    bool propagate_frame_n_n(UGraph& ug, UG_Attributes& ug_attribs, Dart d);
 
     /// use frames to set geometry of connection interfaces
     bool set_interfaces_geometry(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2, CMap2_Attributes& m2_attribs);
     bool set_interface_geometry_1_2(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2, CMap2_Attributes& m2_attribs, UGVertex ugv);
     bool set_interface_geometry_n(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2, CMap2_Attributes& m2_attribs, UGVertex ugv);
+    bool set_edge_geometry(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2, CMap2_Attributes& m2_attribs);
 
     /// builds a section for each branch in the graph and stores connecting darts in cmap2
     bool build_branch_sections(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2, CMap2_Attributes& m2_attribs, CMap3& cmap3);
     /// creates a section of a branch and returns d0
-    Dart new_section(M3Builder& m3builder);
-
-
+    Dart new_section(CMap3& cmap3);
+    /// sews all sections of the cmap3
+    bool sew_sections(CMap2& cmap2, CMap2_Attributes& m2_attribs, CMap3& cmap3);
+    /// set geometry of cmap3 from cmap2
+    bool set_m3_geometry(CMap2& cmap2, CMap2_Attributes& m2_attribs, CMap3& cmap3);
 }
 
 

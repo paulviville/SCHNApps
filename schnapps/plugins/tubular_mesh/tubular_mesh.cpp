@@ -81,7 +81,7 @@ bool Plugin_TubularMesh::enable()
     plugin_volume_render_ = static_cast<plugin_volume_render::Plugin_VolumeRender*>(schnapps_->enable_plugin(plugin_volume_render::Plugin_VolumeRender::plugin_name()));
 
 //    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/two_intersections.cg");
-//    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/intersection3_alone.cg");
+//    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/intersection3.cg");
 //    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/intersections_2D.cg");
     ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/stickwoman.cg");
 //    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/ReseauVasculaire003.cg");

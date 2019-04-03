@@ -12,7 +12,7 @@ namespace schnapps
 
 namespace vessels_building{
     bool build_hexmesh(UGraph& ug, CMap3& cmap3, CMap2& cmap2){
-        add_radius(ug, 0.5);
+        add_radius(ug, 1.0);
 //        ug_stats(ug);
 
         bool valid;
@@ -45,6 +45,7 @@ namespace vessels_building{
 
         CMap2_Attributes m2_attribs;
         ug_attribs.m2_CC = ug.add_attribute<Dart, UGVertex>("m2_CC");
+        ug_attribs.m2_interface = ug.add_attribute<Dart, UGDart>("m2_interface");
         /// building connection interfaces
         valid = build_connection_interfaces(ug, ug_attribs, cmap2);
         if(!valid){
@@ -56,20 +57,71 @@ namespace vessels_building{
 //        cmap2.create_embedding<M2Vertex::ORBIT>();
         m2_attribs.position = cmap2.add_attribute<VEC3, M2Vertex>("position");
         m2_attribs.center = cmap2.add_attribute<VEC3, M2Volume>("center");
+        m2_attribs.f_branch = cmap2.add_attribute<Dart, M2Face>("f_branches");
+        m2_attribs.f_point = cmap2.add_attribute<VEC3, M2Face>("f_points");
         ug_attribs.frames = ug.add_attribute<Frame, UGDart>("frames");
-        ug_attribs.m2_interface = ug.add_attribute<Dart, UGDart>("m2_interface");
-        complete_intersections(ug, ug_attribs, simplified_graph, cmap2, m2_attribs);
 
-//        m2_attribs.edge_pos = cmap2.add_attribute<VEC3, M2Edge>("edge_position");
+        valid = complete_intersections(ug, ug_attribs, simplified_graph, cmap2, m2_attribs);
+        if(!valid){
+            cgogn_log_info("error build_hexmesh: ") << "failed to complete connection interfaces";
+            return false;
+        }
+        cgogn_log_info("success: ") << "connection interfaces completed";
+
+        valid = propagate_frames(ug, ug_attribs, simplified_graph);
+        if(!valid){
+            cgogn_log_info("error build_hexmesh: ") << "failed to propagate frames";
+            return false;
+        }
+        cgogn_log_info("success: ") << "frames propagated";
+
+
+        valid = set_interfaces_geometry(ug, ug_attribs, cmap2, m2_attribs);
+        if(!valid){
+            cgogn_log_info("error build_hexmesh: ") << "failed to build interface geometry";
+            return false;
+        }
+        cgogn_log_info("success: ") << "interface geometry built";
+
+        m2_attribs.edge_pos = cmap2.add_attribute<VEC3, M2Edge>("edge_position");
+        valid = set_edge_geometry(ug, ug_attribs, cmap2, m2_attribs);
+        if(!valid){
+            cgogn_log_info("error build_hexmesh: ") << "failed to set edge geometry";
+            return false;
+        }
+        cgogn_log_info("success: ") << "interface edge geometry built";
+
+        m2_attribs.connections = cmap2.add_attribute<Dart, M2Dart>("connections");
+        valid = build_branch_sections(ug, ug_attribs, cmap2, m2_attribs, cmap3);
+        if(!valid){
+            cgogn_log_info("error build_hexmesh: ") << "failed to build branch sections";
+            return false;
+        }
+        cgogn_log_info("success: ") << "branch sections built";
+
+        valid = sew_sections(cmap2, m2_attribs, cmap3);
+        if(!valid){
+            cgogn_log_info("error build_hexmesh: ") << "failed to sew sections";
+            return false;
+        }
+        cgogn_log_info("success: ") << "sections sown";
+
+        valid = set_m3_geometry(cmap2, m2_attribs, cmap3);
+        if(!valid){
+            cgogn_log_info("error build_hexmesh: ") << "failed to set m3 geometry";
+            return false;
+        }
+        cgogn_log_info("success: ") << "m3 geometry set";
 
 
         /// removing attributes meant only for construction
         ug.remove_attribute(ug_attribs.m2_interface);
         ug.remove_attribute(ug_attribs.frames);
-//        cmap2.remove_attribute(m2_attribs.edge_pos);
 
-
-
+        cmap2.remove_attribute(m2_attribs.center);
+        cmap2.remove_attribute(m2_attribs.f_branch);
+        cmap2.remove_attribute(m2_attribs.f_point);
+        cmap2.remove_attribute(m2_attribs.connections);
         return true;
     }
 
@@ -187,8 +239,6 @@ namespace vessels_building{
 
         UGCache edge_cache(ug);
         edge_cache.build<UGEdge>();
-        cgogn_log_info("cache size: ") << edge_cache.size<UGEdge>();
-
         while(edge_cache.size<UGEdge>()){
             ug.foreach_cell([&](UGEdge uge){
                 //cut edge
@@ -200,7 +250,6 @@ namespace vessels_building{
                 return ug_dart_marker.is_marked(uge.dart);
             });
             ug_dart_marker.unmark_all();
-            cgogn_log_info("cache size: ") << edge_cache.size<UGEdge>();
         }
         return true;
     }
@@ -268,9 +317,7 @@ namespace vessels_building{
 
     bool build_connection_interfaces(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2){
         bool valid;
-        uint i = 0;
         ug.foreach_cell([&](UGVertex ugv) -> bool {
-            cgogn_log_info("ugv") << i++ << " " <<  ug.nb_darts_of_orbit(ugv);
             switch (ug.nb_darts_of_orbit(ugv)) {
             case 1:
                 valid = build_interface_1(ug, ug_attribs, cmap2, ugv);
@@ -290,6 +337,7 @@ namespace vessels_building{
     bool build_interface_1(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2, UGVertex ugv){
         Dart f = cmap2.add_face(4).dart;
         ug_attribs.m2_CC[ugv.dart] = f;
+        ug_attribs.m2_interface[ugv.dart] = f;
         return true;
     }
 
@@ -300,7 +348,10 @@ namespace vessels_building{
         m2builder.phi2_sew(cmap2.phi<1>(Fd[0]), cmap2.phi<111>(Fd[1]));
         m2builder.phi2_sew(cmap2.phi<11>(Fd[0]), cmap2.phi<11>(Fd[1]));
         m2builder.phi2_sew(cmap2.phi<111>(Fd[0]), cmap2.phi<1>(Fd[1]));
-        ug_attribs.m2_CC[ugv.dart] = Fd[0];
+        ug_attribs.m2_CC[ugv] = Fd[0];
+        Dart d = ugv.dart;
+        ug_attribs.m2_interface[d] = Fd[0];
+        ug_attribs.m2_interface[ug.alpha1(d)] = cmap2.phi<12>(Fd[0]);
         return true;
     }
 
@@ -351,17 +402,24 @@ namespace vessels_building{
         VEC3 center = ug_attribs.position[ugv];
         Scalar radius = ug_attribs.radii[ugv];
         Dart cc = ug_attribs.m2_CC[ugv];
-        m2_attribs.center[cc] = center;
+//        m2_attribs.center[cc] = center;
 
         std::vector<Dart> Fd = {cc, cmap2.phi<2111>(cc), cmap2.phi<12>(cc)};
         std::vector<Dart> Pdart = {ugv.dart, ug.alpha1(ugv.dart), ug.alpha1(ug.alpha1(ugv.dart))};
-        std::vector<VEC3> Ppos = {ug_attribs.position[ug.alpha0(Pdart[0])], ug_attribs.position[ug.alpha0(Pdart[1])], ug_attribs.position[ug.alpha0(Pdart[2])]};
+        std::vector<VEC3> Ppos = {
+            project_on_sphere(ug_attribs.position[ug.alpha0(Pdart[0])], radius, center),
+            project_on_sphere(ug_attribs.position[ug.alpha0(Pdart[1])], radius, center),
+            project_on_sphere(ug_attribs.position[ug.alpha0(Pdart[2])], radius, center)
+        };
         VEC3 V = (Ppos[1] - Ppos[0]).cross(Ppos[2] - Ppos[0]).normalized();
         std::vector<VEC3> Q = {center + V * radius, center - V * radius};
         std::vector<VEC3> M = {center + (Ppos[1] - Ppos[0]).normalized().cross(V) * radius,
                  center + (Ppos[2] - Ppos[1]).normalized().cross(V) * radius,
                  center + (Ppos[0] - Ppos[2]).normalized().cross(V) * radius};
 
+        M[0] = mean_dir(center, radius, M[0], {Ppos[0], Ppos[1]});
+        M[1] = mean_dir(center, radius, M[1], {Ppos[2], Ppos[1]});
+        M[2] = mean_dir(center, radius, M[2], {Ppos[0], Ppos[2]});
 
         m2_attribs.position[Fd[0]] = M[0];
         m2_attribs.position[Fd[1]] = M[1];
@@ -376,20 +434,242 @@ namespace vessels_building{
     }
 
     bool complete_intersection_n(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2, CMap2_Attributes& m2_attribs, UGVertex ugv){
+        using cgogn::geometry::intersection_ray_triangle;
+        VEC3 center = ug_attribs.position[ugv];
+        Scalar radius = ug_attribs.radii[ugv];
+        Dart cc = ug_attribs.m2_CC[ugv];
+//        m2_attribs.center[cc] = center;
 
+        std::vector<Dart> Fd = {cc, cmap2.phi<2111>(cc), cmap2.phi<12>(cc)};
+
+        std::vector<Dart> Pdart;
+        std::vector<VEC3> Ppos;
+        ug.foreach_adjacent_vertex_through_edge(ugv, [&](UGVertex ugv){
+            Ppos.push_back(project_on_sphere(ug_attribs.position[ugv], radius, center));
+            Pdart.push_back(ug.alpha0(ugv.dart));
+        });
+
+        VEC3 V = (Ppos[1] - Ppos[0]).cross(Ppos[2] - Ppos[0]).normalized();
+        std::vector<VEC3> Q = {center + V * radius, center - V * radius};
+        std::vector<VEC3> M = {center + (Ppos[1] - Ppos[0]).normalized().cross(V) * radius,
+                 center + (Ppos[2] - Ppos[1]).normalized().cross(V) * radius,
+                 center + (Ppos[0] - Ppos[2]).normalized().cross(V) * radius};
+
+        M[0] = mean_dir(center, radius, M[0], {Ppos[0], Ppos[1]});
+        M[1] = mean_dir(center, radius, M[1], {Ppos[2], Ppos[1]});
+        M[2] = mean_dir(center, radius, M[2], {Ppos[0], Ppos[2]});
+
+        m2_attribs.position[Fd[0]] = M[0];
+        m2_attribs.position[Fd[1]] = M[1];
+        m2_attribs.position[Fd[2]] = M[2];
+        m2_attribs.position[cmap2.phi<1>(Fd[0])] = Q[0];
+        m2_attribs.position[cmap2.phi<111>(Fd[0])] = Q[1];
+
+        m2_attribs.f_point[Fd[0]] = Ppos[0];
+        m2_attribs.f_point[Fd[1]] = Ppos[1];
+        m2_attribs.f_point[Fd[2]] = Ppos[2];
+
+        m2_attribs.f_branch[Fd[0]] = Pdart[0];
+        m2_attribs.f_branch[Fd[1]] = Pdart[1];
+        m2_attribs.f_branch[Fd[2]] = Pdart[2];
+
+        for(uint i = 3; i < Ppos.size(); i++){
+            VEC3 P0 = Ppos[i];
+            Dart F0 = Pdart[i];
+            M2Face face2cut;
+            std::vector<VEC3> Quadp; //positions
+            std::vector<Dart> Quadd; //darts
+
+            bool face_found = false;
+            cmap2.foreach_cell([&](M2Face f) -> bool {
+                Dart fd = convex_quad(cmap2, m2_attribs, f.dart);
+                Quadd = {fd, cmap2.phi<1>(fd),
+                         cmap2.phi<11>(fd),
+                         cmap2.phi<111>(fd)};
+                Quadp = {m2_attribs.position[Quadd[0]],
+                         m2_attribs.position[Quadd[1]],
+                         m2_attribs.position[Quadd[2]],
+                         m2_attribs.position[Quadd[3]]};
+                if((face_found = (intersection_ray_triangle(center, P0 - center, Quadp[0], Quadp[1], Quadp[2])
+                                 || intersection_ray_triangle(center, P0 - center, Quadp[0], Quadp[2], Quadp[3])))){
+                    face2cut = f;
+                    return false;
+                }
+                return true;
+            });
+            if(!face_found){
+                cgogn_log_info("error complete_intersection_n: ") << "no face found";
+                return false;
+            }
+
+            VEC3 P1 = m2_attribs.f_point[M2Face(face2cut)];
+            Dart F1 = m2_attribs.f_branch[M2Face(face2cut)];
+
+            Dart cut0, cut1;
+            VEC3 AC = (Quadp[2] - Quadp[0]).normalized();
+            VEC3 BD = (Quadp[3] - Quadp[1]).normalized();
+            VEC3 P0P1 = (P1 - P0).normalized();
+            if(abs(AC.dot(P0P1)) < abs(BD.dot(P0P1))){
+                cut0 = Quadd[0]; cut1 = Quadd[2];
+            } else {
+                cut0 = Quadd[1]; cut1 = Quadd[3];
+            }
+            cmap2.cut_face(cut0, cut1);
+            M2Vertex v = cmap2.cut_edge(M2Edge(cmap2.phi_1(cut0)));
+            m2_attribs.position[v] = project_on_sphere((P0 + P1) * Scalar(0.5), radius, center);
+
+            Dart newFace, oldFace;
+            VEC3 out0 = m2_attribs.position[v] - center;
+            VEC3 out1 = ((P0 - m2_attribs.position[cut0]).normalized().cross((P1 - m2_attribs.position[cut0]).normalized()));
+            if(out1.dot(out0) >= 0){
+                newFace = cut0; oldFace = cut1;
+            }
+            else{
+                newFace = cut1; oldFace = cut0;
+            }
+
+            m2_attribs.f_branch[M2Face(newFace)] = F0;
+            m2_attribs.f_branch[M2Face(oldFace)] = F1;
+            m2_attribs.f_point[M2Face(newFace)] = P0;
+            m2_attribs.f_point[M2Face(oldFace)] = P1;
+
+            cmap2.foreach_incident_vertex(M2Face(newFace), [&](M2Vertex m2v){
+                std::vector<VEC3> points;
+                cmap2.foreach_incident_face(m2v, [&](M2Face m2f){
+                    points.push_back(m2_attribs.f_point[m2f]);
+                });
+                m2_attribs.position[m2v] = mean_dir(center, radius, m2_attribs.position[m2v], points);
+            });
+        }
+
+        cmap2.foreach_incident_face(M2Volume(cc), [&](M2Face m2f){
+            ug_attribs.m2_interface[m2_attribs.f_branch[m2f]] = m2f.dart;
+        });
         return true;
     }
 
     bool create_intersection_frames(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2, CMap2_Attributes& m2_attribs, UGVertex ugv){
+        VEC3 center = ug_attribs.position[ugv];
+        Dart cc = ug_attribs.m2_CC[ugv];
+        ug.foreach_dart_of_orbit(ugv, [&](Dart d){
+            Dart d0 = ug_attribs.m2_interface[d];
+            Dart d1 = cmap2.phi<11>(d0);
+            VEC3 R, S, T, diag, temp;
+            T = (ug_attribs.position[ug.alpha0(d)] - center).normalized();
+            diag =(m2_attribs.position[d1] - m2_attribs.position[d0]).normalized();
+//            S = T.cross(diag).normalized();
+//            R = S.cross(T).normalized();
+            R = diag.cross(T).normalized();
+            S = T.cross(R).normalized();
+            ug_attribs.frames[d].col(0) = R;
+            ug_attribs.frames[d].col(1) = S;
+            ug_attribs.frames[d].col(2) = T;
+        });
         return true;
     }
 
+    Dart convex_quad(CMap2& cmap2, CMap2_Attributes& m2_attribs, Dart f){
+        Dart res;
+        VEC3 A = m2_attribs.position[M2Vertex(f)];
+        VEC3 B = m2_attribs.position[M2Vertex(cmap2.phi<1>(f))];
+        VEC3 C = m2_attribs.position[M2Vertex(cmap2.phi<11>(f))];
+        VEC3 D = m2_attribs.position[M2Vertex(cmap2.phi<111>(f))];
+        VEC3 AB = B - A;
+        VEC3 AC = C - A;
+        VEC3 AD = D - A;
+        VEC3 N0 = AC.cross(AD);
+        VEC3 N1 = AB.cross(AC);
+        VEC3 N = N0.cross(N1).normalized();
 
-    bool propagate_frames(UGraph& ug, UG_Attributes& ug_attribs, Graph graph){
+        if(N.dot(AC) < 0){
+            res = cmap2.phi<1>(f);
+        }
+        else{
+            res = f;
+        }
+        return res;
+    }
+
+    VEC3 mean_dir(VEC3 center, Scalar radius, VEC3 point, std::vector<VEC3> points){
+        using Quat = Eigen::Quaterniond;
+        uint32 valence = points.size();
+
+        std::vector<VEC3> directions;
+        for(VEC3 p : points){
+            directions.push_back((p - center).normalized());
+        }
+        VEC3 avg_dir = (point - center).normalized();
+
+        std::vector<Quat> rotations;
+        rotations.reserve(valence);
+
+//        for(uint i = 0; i < valence; i++){
+            for(VEC3 dir : directions){
+                Quat q = Quat::FromTwoVectors(avg_dir, dir);
+                q.normalize();
+                rotations.push_back(q);
+            }
+
+            Eigen::MatrixXd m(4, valence);
+            for(uint32 j = 0; j < valence; ++j){
+                const Quat& q = rotations[j];
+                m.col(j) = VEC4(q.w(), q.x(), q.y(), q.z());
+            }
+
+            Eigen::MatrixXd mm = m * m.transpose();
+            Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(mm);
+            VEC4 r = es.eigenvectors().col(3);
+
+            Quat mean_rot(r[0], r[1], r[2], r[3]);
+            mean_rot.normalize();
+            avg_dir = mean_rot._transformVector(avg_dir);
+            rotations.clear();
+//        }
+
+        return avg_dir * radius + center;
+    }
+
+    bool propagate_frames(UGraph& ug, UG_Attributes& ug_attribs, const Graph& graph){
+        for(Branch branch : graph.branches){
+            if(ug.nb_darts_of_orbit(UGVertex(branch.first)) > 1){
+                propagate_frame_n_1(ug, ug_attribs, branch.first);
+            }
+            else{
+                propagate_frame_n_1(ug, ug_attribs, branch.second);
+            }
+        }
         return true;
     }
 
-    bool propagate_frame_n_1(UGraph& ug, UG_Attributes& ug_attribs, Dart d0){
+    bool propagate_frame_n_1(UGraph& ug, UG_Attributes& ug_attribs, Dart d){
+        Frame F0 = ug_attribs.frames[d];
+        Dart d0 = d;
+        Dart d1 = ug.alpha0(d0);
+        uint32 valence = ug.nb_darts_of_orbit(UGVertex(d1));
+        while(valence == 2){
+            Frame F, F_;
+            /// placeholder RMF
+            F = F0;
+            F_.col(0) = F.col(0);
+            F_.col(1) = -F.col(1);
+            F_.col(2) = -F.col(2);
+            /// placeholder
+
+            ug_attribs.frames[d1] = F_;
+            d0 = ug.alpha1(d1);
+            d1 = ug.alpha0(d0);
+            ug_attribs.frames[d0] = F;
+            valence = ug.nb_darts_of_orbit(UGVertex(d1));
+        }
+
+        if(valence == 1){
+            Frame F_;
+            F_.col(0) = F0.col(0);
+            F_.col(1) = -F0.col(1);
+            F_.col(2) = -F0.col(2);
+            ug_attribs.frames[d1] = F_;
+        }
+
         return true;
     }
 
@@ -399,26 +679,160 @@ namespace vessels_building{
     }
 
     bool set_interfaces_geometry(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2, CMap2_Attributes& m2_attribs){
+        ug.foreach_cell([&](UGVertex ugv) -> bool {
+            VEC3 center = ug_attribs.position[ugv];
+            Scalar radius = ug_attribs.radii[ugv];
+            Dart f0 = ug_attribs.m2_interface[ugv.dart];
+
+            m2_attribs.center[M2Volume(f0)] = center;
+
+            if(ug.nb_darts_of_orbit(ugv) > 2){
+                return true;
+            }
+
+            Frame F = ug_attribs.frames[ugv.dart];
+
+            m2_attribs.position[f0] = center - F.col(1) * radius;
+            m2_attribs.position[cmap2.phi<1>(f0)] = center + F.col(0) * radius;
+            m2_attribs.position[cmap2.phi<11>(f0)] = center + F.col(1) * radius;
+            m2_attribs.position[cmap2.phi<111>(f0)] = center - F.col(0) * radius;
+
+            return true;
+        });
         return true;
     }
 
-    bool set_interface_geometry_1_2(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2, CMap2_Attributes& m2_attribs, UGVertex ugv){
-        return true;
-    }
+//    bool set_interface_geometry_1_2(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2, CMap2_Attributes& m2_attribs, UGVertex ugv){
+////        VEC3 center = ug_attribs.position[ugv];
+////        Scalar radius = ug_attribs.radii[ugv];
+////        Dart f0 = ug_attribs.m2_interface[ugv.dart];
+////        Frame F = ug_attribs.frames[ugv.dart];
 
-    bool set_interface_geometry_n(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2, CMap2_Attributes& m2_attribs, UGVertex ugv){
+////        m2_attribs.position[f0] = center + F.col(1) * radius;
+////        m2_attribs.position[cmap2.phi<1>(f0)] = center + F.col(0) * radius;
+////        m2_attribs.position[cmap2.phi<1>(f0)] = center - F.col(1) * radius;
+////        m2_attribs.position[cmap2.phi<1>(f0)] = center - F.col(0) * radius;
+//        cgogn_log_info("int") << 0;
+//        return true;
+//    }
+
+//    bool set_interface_geometry_n(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2, CMap2_Attributes& m2_attribs, UGVertex ugv){
+//        return true;
+//    }
+
+    bool set_edge_geometry(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2, CMap2_Attributes& m2_attribs){
+        ug.foreach_cell([&](UGVertex ugv){
+            VEC3 center = ug_attribs.position[ugv];
+            Scalar radius = ug_attribs.radii[ugv];
+            Dart cc = ug_attribs.m2_CC[ugv];
+
+            cmap2.foreach_incident_edge(M2Volume(cc), [&](M2Edge m2e){
+                Dart d0 = m2e.dart;
+                Dart d1 = cmap2.phi2(d0);
+
+                VEC3 edge_pos = project_on_sphere((m2_attribs.position[d0] + m2_attribs.position[d1])/2, radius, center);
+                m2_attribs.edge_pos[m2e] = edge_pos;
+            });
+        });
         return true;
     }
 
     bool build_branch_sections(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2, CMap2_Attributes& m2_attribs, CMap3& cmap3){
+        uint32 i = 0;
+        ug.foreach_cell([&](UGEdge uge){
+            Dart e0 = uge.dart;
+            Dart e1 = ug.alpha0(e0);
+            std::vector<Dart> F = {ug_attribs.m2_interface[e0], ug_attribs.m2_interface[e1]};
+            std::vector<Dart> F0 = {F[0], cmap2.phi<1>(F[0]), cmap2.phi<11>(F[0]), cmap2.phi<111>(F[0])};
+            std::vector<Dart> F1 = {F[1], cmap2.phi<1>(F[1]), cmap2.phi<11>(F[1]), cmap2.phi<111>(F[1])};
+
+            Dart D = new_section(cmap3);
+            std::vector<Dart> D0 = {D, cmap3.phi<2321>(D), cmap3.phi<23212321>(D), cmap3.phi<111232>(D)};
+            std::vector<Dart> D1 = {cmap3.phi<2112>(D0[0]), cmap3.phi<2112>(D0[1]), cmap3.phi<2112>(D0[2]), cmap3.phi<2112>(D0[3])};
+
+            m2_attribs.connections[F0[0]] = cmap3.phi<1>(D0[0]);
+            m2_attribs.connections[F0[1]] = cmap3.phi<1>(D0[1]);
+            m2_attribs.connections[F0[2]] = cmap3.phi<1>(D0[2]);
+            m2_attribs.connections[F0[3]] = cmap3.phi<1>(D0[3]);
+
+            m2_attribs.connections[F1[0]] = cmap3.phi<11>(D1[1]);
+            m2_attribs.connections[F1[1]] = cmap3.phi<11>(D1[0]);
+            m2_attribs.connections[F1[2]] = cmap3.phi<11>(D1[3]);
+            m2_attribs.connections[F1[3]] = cmap3.phi<11>(D1[2]);
+        });
         return true;
     }
 
     Dart new_section(CMap3& cmap3){
+        M3Builder m3builder(cmap3);
+        std::vector<Dart> D = {m3builder.add_prism_topo_fp(4u),
+                              m3builder.add_prism_topo_fp(4u),
+                              m3builder.add_prism_topo_fp(4u),
+                              m3builder.add_prism_topo_fp(4u)
+                              };
 
+        m3builder.sew_volumes_fp(cmap3.phi<2>(D[0]), cmap3.phi<1112>(D[1]));
+        m3builder.sew_volumes_fp(cmap3.phi<2>(D[1]), cmap3.phi<1112>(D[2]));
+        m3builder.sew_volumes_fp(cmap3.phi<2>(D[2]), cmap3.phi<1112>(D[3]));
+        m3builder.sew_volumes_fp(cmap3.phi<2>(D[3]), cmap3.phi<1112>(D[0]));
+        return D[0];
     }
 
+    bool sew_sections(CMap2& cmap2, CMap2_Attributes& m2_attribs, CMap3& cmap3){
+        M3Builder m3builder(cmap3);
+        bool valid = true;
+        cmap2.foreach_cell([&](M2Edge m2e) -> bool {
+            Dart m2d_0 = m2e.dart;
+            Dart m2d_1 = cmap2.phi2(m2d_0);
 
+            if(cmap2.is_boundary(m2d_0)||cmap2.is_boundary(m2d_1)){
+                return true;
+            }
+
+            m3builder.sew_volumes_fp(m2_attribs.connections[m2d_0], cmap3.phi<1>(m2_attribs.connections[m2d_1]));
+
+            return true;
+        });
+        m3builder.close_map();
+        return valid;
+    }
+
+    bool set_m3_geometry(CMap2& cmap2, CMap2_Attributes& m2_attribs, CMap3& cmap3){
+        CMap3::VertexAttribute<VEC3> position = cmap3.add_attribute<VEC3, M3Vertex>("position");
+//        cmap3.foreach_cell([&](M3Vertex m3v){
+//            cgogn_log_info("pos") << 0;
+//            position[m3v] = VEC3::Random();
+//        });
+        M3DartMarker m3Marker(cmap3);
+
+        cmap2.foreach_cell([&](M2Volume m2vol){
+            Dart m3d = cmap3.phi_1(m2_attribs.connections[m2vol.dart]);
+            position[m3d] = m2_attribs.center[m2vol.dart];
+        });
+
+        cmap2.foreach_cell([&](M2Edge m2e){
+//            Dart e0 = m2e.dart;
+//            Dart e1 = cmap2.phi2(e0);
+            Dart d = cmap3.phi1(m2_attribs.connections[m2e.dart]);
+//            Dart d1 = m2_attribs.connections[e1];
+//            Dart mid = cmap3.phi1(d0);
+//            position[d0] = m2_attribs.position[e1];
+//            position[d1] = m2_attribs.position[e0];
+            position[d] = m2_attribs.edge_pos[m2e];
+        });
+
+        cmap2.foreach_dart([&](Dart m2d){
+            if(!cmap2.is_boundary(m2d)){
+                Dart m3d = m2_attribs.connections[m2d];
+                if(!m3Marker.is_marked(m3d)){
+                    position[m3d] = m2_attribs.position[cmap2.phi1(m2d)];
+//                    position[m3d] = m2_attribs.position[cmap2.phi1(m2d)];
+                    m3Marker.mark_orbit(M3Vertex(m3d));
+                }
+            }
+        });
+        return true;
+    }
 }
 
 
