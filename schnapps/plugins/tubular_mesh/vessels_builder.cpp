@@ -68,7 +68,7 @@ namespace vessels_building{
         }
         cgogn_log_info("success: ") << "connection interfaces completed";
 
-        valid = propagate_frames(ug, ug_attribs, simplified_graph);
+        valid = propagate_frames(ug, ug_attribs, simplified_graph, cmap2);
         if(!valid){
             cgogn_log_info("error build_hexmesh: ") << "failed to propagate frames";
             return false;
@@ -130,7 +130,12 @@ namespace vessels_building{
         if(!radii.is_valid()){
             radii = ug.add_attribute<Scalar, UGVertex>("radius");
             ug.foreach_cell([&](UGVertex ugv){
-                radii[ugv] = radius;
+                uint32 valence = ug.nb_darts_of_orbit(ugv);
+                Scalar rad = radius;
+                if(valence > 2){
+                    rad = radius * (1 + 0.15*(valence-2));
+                }
+                radii[ugv] = rad;
             });
         }
     }
@@ -235,14 +240,23 @@ namespace vessels_building{
 
     bool ug_sudivide(UGraph& ug, UG_Attributes& ug_attribs){
         UGDartMarker ug_dart_marker(ug);
-        UGraph::VertexAttribute<VEC3>& position = ug_attribs.position;
+        UGraph::VertexAttribute<VEC3>& ug_pos = ug_attribs.position;
+        UGraph::VertexAttribute<Scalar>& ug_radii = ug_attribs.radii;
 
         UGCache edge_cache(ug);
         edge_cache.build<UGEdge>();
         while(edge_cache.size<UGEdge>()){
             ug.foreach_cell([&](UGEdge uge){
-                //cut edge
-                //mark new edges
+                VEC3 p1 = ug_attribs.position[uge.dart];
+                VEC3 p2 = ug_attribs.position[ug.alpha0(uge.dart)];
+                Scalar radius = (ug_radii[uge.dart] + ug_radii[ug.alpha0(uge.dart)])/2;
+                if((p1 - p2).norm() > 2 * radius){
+                    UGVertex ugv = ug.cut_edge(uge);
+                    ug_attribs.position[ugv] = (p1 + p2) / 2;
+                    ug_radii[ugv] = radius;
+                    ug_dart_marker.mark_orbit(UGEdge(ugv.dart));
+                    ug_dart_marker.mark_orbit(UGEdge(ug.alpha1(ugv.dart)));
+                }
             }, edge_cache);
 
             edge_cache.clear<UGEdge>();
@@ -550,7 +564,7 @@ namespace vessels_building{
 
     bool create_intersection_frames(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2, CMap2_Attributes& m2_attribs, UGVertex ugv){
         VEC3 center = ug_attribs.position[ugv];
-        Dart cc = ug_attribs.m2_CC[ugv];
+//        Dart cc = ug_attribs.m2_CC[ugv];
         ug.foreach_dart_of_orbit(ugv, [&](Dart d){
             Dart d0 = ug_attribs.m2_interface[d];
             Dart d1 = cmap2.phi<11>(d0);
@@ -629,10 +643,16 @@ namespace vessels_building{
         return avg_dir * radius + center;
     }
 
-    bool propagate_frames(UGraph& ug, UG_Attributes& ug_attribs, const Graph& graph){
+    bool propagate_frames(UGraph& ug, UG_Attributes& ug_attribs, const Graph& graph, CMap2& cmap2){
         for(Branch branch : graph.branches){
             if(ug.nb_darts_of_orbit(UGVertex(branch.first)) > 1){
                 propagate_frame_n_1(ug, ug_attribs, branch.first);
+                if(ug.nb_darts_of_orbit(UGVertex(branch.second)) == 1){
+                    propagate_frame_n_1(ug, ug_attribs, branch.second);
+                }
+                else{
+                    propagate_frame_n_n(ug, ug_attribs, branch.first, cmap2);
+                }
             }
             else{
                 propagate_frame_n_1(ug, ug_attribs, branch.second);
@@ -642,39 +662,178 @@ namespace vessels_building{
     }
 
     bool propagate_frame_n_1(UGraph& ug, UG_Attributes& ug_attribs, Dart d){
-        Frame F0 = ug_attribs.frames[d];
+        Frame U0 = ug_attribs.frames[d];
         Dart d0 = d;
         Dart d1 = ug.alpha0(d0);
         uint32 valence = ug.nb_darts_of_orbit(UGVertex(d1));
+        Frame U, U_;
+        U = U0;
+
         while(valence == 2){
-            Frame F, F_;
-            /// placeholder RMF
-            F = F0;
-            F_.col(0) = F.col(0);
-            F_.col(1) = -F.col(1);
-            F_.col(2) = -F.col(2);
+            VEC3 v1, v2, v3, Ri, Ti, RiL, TiL, Ri1, Ti1, Si1;
+            Scalar c1, c2;
+
+            Ri = U.col(0);
+            Ti = U.col(2);
+            v1 = ug_attribs.position[d1] - ug_attribs.position[d0];
+            c1 = v1.dot(v1);
+            RiL = Ri - (2/c1)*(v1.dot(Ri))*v1;
+            TiL = Ti - (2/c1)*(v1.dot(Ti))*v1;
+            // placeholder Ti1
+            v3 = (ug_attribs.position[ug.alpha0(ug.alpha1(d1))] - ug_attribs.position[d1]);
+            Ti1 = (v1.normalized()+v3.normalized()).normalized();
+            v2 = Ti1 - TiL;
+            c2 = v2.dot(v2);
+            Ri1 = RiL -(2/c2)*(v2.dot(RiL)) * v2;
+            Si1 = Ti1.cross(Ri1);
+            U.col(0) = Ri1;
+            U.col(1) = Si1;
+            U.col(2) = Ti1;
             /// placeholder
 
-            ug_attribs.frames[d1] = F_;
+
+            U_.col(0) = U.col(0);
+            U_.col(1) = -U.col(1);
+            U_.col(2) = -U.col(2);
+
+            ug_attribs.frames[d1] = U_;
             d0 = ug.alpha1(d1);
             d1 = ug.alpha0(d0);
-            ug_attribs.frames[d0] = F;
+            ug_attribs.frames[d0] = U;
             valence = ug.nb_darts_of_orbit(UGVertex(d1));
         }
 
         if(valence == 1){
-            Frame F_;
-            F_.col(0) = F0.col(0);
-            F_.col(1) = -F0.col(1);
-            F_.col(2) = -F0.col(2);
-            ug_attribs.frames[d1] = F_;
+            VEC3 v1, v2, v3, Ri, Ti, RiL, TiL, Ri1, Ti1, Si1;
+            Scalar c1, c2;
+            Ri = U.col(0);
+            Ti = U.col(2);
+            v1 = ug_attribs.position[d1] - ug_attribs.position[d0];
+            c1 = v1.dot(v1);
+            RiL = Ri - (2/c1)*(v1.dot(Ri))*v1;
+            TiL = Ti - (2/c1)*(v1.dot(Ti))*v1;
+            // placeholder Ti1
+//            v3 = (ug_attribs.position[ug.alpha0(ug.alpha1(d1))] - ug_attribs.position[d1]);
+            Ti1 = v1.normalized();
+            v2 = Ti1 - TiL;
+            c2 = v2.dot(v2);
+            Ri1 = RiL -(2/c2)*(v2.dot(RiL)) * v2;
+            Si1 = Ti1.cross(Ri1);
+            U.col(0) = Ri1;
+            U.col(1) = Si1;
+            U.col(2) = Ti1;
+
+            U_.col(0) = U.col(0);
+            U_.col(1) = -U.col(1);
+            U_.col(2) = -U.col(2);
+            ug_attribs.frames[d1] = U_;
         }
 
         return true;
     }
 
-    bool propagate_frame_n_n(UGraph& ug, UG_Attributes& ug_attribs, Dart d0){
+    bool propagate_frame_n_n(UGraph& ug, UG_Attributes& ug_attribs, Dart d, CMap2& cmap2){
+        Frame U0 = ug_attribs.frames[d];
+        Dart d0 = d;
+        Dart d1 = ug.alpha0(d0);
+        uint32 valence = ug.nb_darts_of_orbit(UGVertex(d1));
+        Frame U, U_;
+        U = U0;
 
+        uint nb_e = 0;
+
+        VEC3 v1, v2, v3, Ri, Ti, RiL, TiL, Ri1, Ti1, Si1;
+        Scalar c1, c2;
+
+        while(valence == 2){
+            nb_e++;
+
+            Ri = U.col(0);
+            Ti = U.col(2);
+            v1 = ug_attribs.position[d1] - ug_attribs.position[d0];
+            c1 = v1.dot(v1);
+            RiL = Ri - (2/c1)*(v1.dot(Ri))*v1;
+            TiL = Ti - (2/c1)*(v1.dot(Ti))*v1;
+
+            v3 = (ug_attribs.position[ug.alpha0(ug.alpha1(d1))] - ug_attribs.position[d1]);
+            Ti1 = (v1.normalized()+v3.normalized()).normalized();
+            v2 = Ti1 - TiL;
+            c2 = v2.dot(v2);
+            Ri1 = RiL -(2/c2)*(v2.dot(RiL)) * v2;
+            Si1 = Ti1.cross(Ri1);
+            U.col(0) = Ri1;
+            U.col(1) = Si1;
+            U.col(2) = Ti1;
+
+            d0 = ug.alpha1(d1);
+            d1 = ug.alpha0(d0);
+            ug_attribs.frames[d0] = U;
+            valence = ug.nb_darts_of_orbit(UGVertex(d1));
+        }
+
+        Ri = U.col(0);
+        Ti = U.col(2);
+        v1 = ug_attribs.position[d1] - ug_attribs.position[d0];
+        c1 = v1.dot(v1);
+        RiL = Ri - (2/c1)*(v1.dot(Ri))*v1;
+        TiL = Ti - (2/c1)*(v1.dot(Ti))*v1;
+        Ti1 = v1.normalized();
+        v2 = Ti1 - TiL;
+        c2 = v2.dot(v2);
+        Ri1 = RiL -(2/c2)*(v2.dot(RiL)) * v2;
+        Si1 = Ti1.cross(Ri1);
+        U.col(0) = Ri1;
+        U.col(1) = Si1;
+        U.col(2) = Ti1;
+
+        U_.col(0) = U.col(0);
+        U_.col(1) = -U.col(1);
+        U_.col(2) = -U.col(2);
+
+        /// shift end fram to minimize twist
+        VEC3 X = (U_.col(0) + U_.col(1)).normalized();
+        Frame UE = ug_attribs.frames[d1];
+        VEC3 RE = UE.col(0), SE = UE.col(1);
+        bool A = (RE.dot(X) >= 0);
+        bool B = (SE.dot(X) >= 0);
+        uint nb_shifts = 0;
+        if(!A && B) nb_shifts = 1;
+        else if(!A && !B) nb_shifts = 2;
+        else if(A && !B) nb_shifts = 3;
+        if(nb_shifts){
+            UE = shift_frame(UE, nb_shifts);
+            ug_attribs.frames[d1] = UE;
+            ug_attribs.m2_interface[d1] = shift_interface(cmap2, ug_attribs.m2_interface[d1], nb_shifts);
+        }
+
+        if(nb_e){
+            Scalar angle = std::acos(UE.col(0).dot(U_.col(0)));
+            cgogn_log_info("angle: ") << angle;
+            Scalar angle_step = angle / nb_e;
+            Dart d0 = d;
+            Dart d1 = ug.alpha0(d0);
+            uint valence = ug.nb_darts_of_orbit(UGVertex(d1));
+            uint step = 0;
+
+            while(valence == 2) {
+                step++;
+                d0 = ug.alpha1(d1);
+                U = ug_attribs.frames[d0];
+                AngleAxisd rot (angle_step * step, U.col(2));
+                U.col(0) = rot * U.col(0);
+                U.col(1) = U.col(2).cross(U.col(0));
+
+                U_.col(0) = U.col(0);
+                U_.col(1) = -U.col(1);
+                U_.col(2) = -U.col(2);
+
+                ug_attribs.frames[d1] = U_;
+                ug_attribs.frames[d0] = U;
+
+                d1 = ug.alpha0(d0);
+                valence = ug.nb_darts_of_orbit(UGVertex(d1));
+            }
+        }
         return true;
     }
 
@@ -702,24 +861,6 @@ namespace vessels_building{
         return true;
     }
 
-//    bool set_interface_geometry_1_2(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2, CMap2_Attributes& m2_attribs, UGVertex ugv){
-////        VEC3 center = ug_attribs.position[ugv];
-////        Scalar radius = ug_attribs.radii[ugv];
-////        Dart f0 = ug_attribs.m2_interface[ugv.dart];
-////        Frame F = ug_attribs.frames[ugv.dart];
-
-////        m2_attribs.position[f0] = center + F.col(1) * radius;
-////        m2_attribs.position[cmap2.phi<1>(f0)] = center + F.col(0) * radius;
-////        m2_attribs.position[cmap2.phi<1>(f0)] = center - F.col(1) * radius;
-////        m2_attribs.position[cmap2.phi<1>(f0)] = center - F.col(0) * radius;
-//        cgogn_log_info("int") << 0;
-//        return true;
-//    }
-
-//    bool set_interface_geometry_n(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2, CMap2_Attributes& m2_attribs, UGVertex ugv){
-//        return true;
-//    }
-
     bool set_edge_geometry(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2, CMap2_Attributes& m2_attribs){
         ug.foreach_cell([&](UGVertex ugv){
             VEC3 center = ug_attribs.position[ugv];
@@ -738,7 +879,6 @@ namespace vessels_building{
     }
 
     bool build_branch_sections(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2, CMap2_Attributes& m2_attribs, CMap3& cmap3){
-        uint32 i = 0;
         ug.foreach_cell([&](UGEdge uge){
             Dart e0 = uge.dart;
             Dart e1 = ug.alpha0(e0);
@@ -799,25 +939,15 @@ namespace vessels_building{
 
     bool set_m3_geometry(CMap2& cmap2, CMap2_Attributes& m2_attribs, CMap3& cmap3){
         CMap3::VertexAttribute<VEC3> position = cmap3.add_attribute<VEC3, M3Vertex>("position");
-//        cmap3.foreach_cell([&](M3Vertex m3v){
-//            cgogn_log_info("pos") << 0;
-//            position[m3v] = VEC3::Random();
-//        });
         M3DartMarker m3Marker(cmap3);
 
-        cmap2.foreach_cell([&](M2Volume m2vol){
-            Dart m3d = cmap3.phi_1(m2_attribs.connections[m2vol.dart]);
-            position[m3d] = m2_attribs.center[m2vol.dart];
+        cmap2.foreach_cell([&](M2Volume m2w){
+            Dart m3d = cmap3.phi_1(m2_attribs.connections[m2w.dart]);
+            position[m3d] = m2_attribs.center[m2w.dart];
         });
 
         cmap2.foreach_cell([&](M2Edge m2e){
-//            Dart e0 = m2e.dart;
-//            Dart e1 = cmap2.phi2(e0);
             Dart d = cmap3.phi1(m2_attribs.connections[m2e.dart]);
-//            Dart d1 = m2_attribs.connections[e1];
-//            Dart mid = cmap3.phi1(d0);
-//            position[d0] = m2_attribs.position[e1];
-//            position[d1] = m2_attribs.position[e0];
             position[d] = m2_attribs.edge_pos[m2e];
         });
 
@@ -826,12 +956,32 @@ namespace vessels_building{
                 Dart m3d = m2_attribs.connections[m2d];
                 if(!m3Marker.is_marked(m3d)){
                     position[m3d] = m2_attribs.position[cmap2.phi1(m2d)];
-//                    position[m3d] = m2_attribs.position[cmap2.phi1(m2d)];
                     m3Marker.mark_orbit(M3Vertex(m3d));
                 }
             }
         });
         return true;
+    }
+
+    Dart shift_interface(CMap2& cmap2, Dart m2f, uint32 nb_shifts){
+        Dart d = m2f;
+        for(uint i = 0; i < nb_shifts; ++i)
+            d = cmap2.phi1(d);
+        return d;
+    }
+
+    Frame shift_frame(Frame frame, uint nb_shifts){
+        Frame f = frame;
+        for(uint i = 0; i < nb_shifts; ++i){
+            VEC3 R, S, T;
+            R = f.col(1);
+            S = -f.col(0);
+            T = f.col(2);
+            f.col(0) = R;
+            f.col(1) = S;
+            f.col(2) = T;
+        }
+        return f;
     }
 }
 

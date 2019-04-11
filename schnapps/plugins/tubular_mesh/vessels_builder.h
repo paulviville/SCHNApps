@@ -16,7 +16,7 @@ namespace schnapps
 namespace vessels_building{
     using Scalar = cgogn::geometry::ScalarOf<VEC3>;
     using Frame = Eigen::Matrix3d;
-
+    using Eigen::AngleAxisd;
     using Dart = cgogn::Dart;
 
     using UGraph = cgogn::UndirectedGraph;
@@ -97,8 +97,13 @@ namespace vessels_building{
     /// if error occurs: graph.valid == false
     Graph ug_analysis(const UGraph& ug);
 
-    /// returns coordinates of the projection of P on the sphere of center C ands radius R
-    VEC3 project_on_sphere(VEC3 P, Scalar R, VEC3 C);
+    /// create all required attributes for the cmap2
+    bool m2_add_attributes(CMap2& cmap2, CMap2_Attributes& m2_attribs);
+
+    /// remove all temporary attributes
+    void attribs_clean_up(UG_Attributes& ug_attribs, CMap2_Attributes& m2_attribs);
+    void m2_attribs_clean_up(CMap2_Attributes& m2_attribs);
+    void ug_attribs_clean_up(UG_Attributes& ug_attribs);
 
     /// Build connection interfaces topology in cmap2 (+geometry for branching point vertices)
     /// returns false if an interface fails to be created
@@ -112,18 +117,14 @@ namespace vessels_building{
     bool complete_intersection_3(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2, CMap2_Attributes& m2_attribs, UGVertex ugv);
     bool complete_intersection_n(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2, CMap2_Attributes& m2_attribs, UGVertex ugv);
     bool create_intersection_frames(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2, CMap2_Attributes& m2_attribs, UGVertex ugv);
-    Dart convex_quad(CMap2& cmap2, CMap2_Attributes& m2_attribs, Dart f);
-    VEC3 mean_dir(VEC3 center, Scalar radius, VEC3 point, std::vector<VEC3> points);
 
     /// Propagate frames from branching points using double reflection
-    bool propagate_frames(UGraph& ug, UG_Attributes& ug_attribs, const Graph& graph);
+    bool propagate_frames(UGraph& ug, UG_Attributes& ug_attribs, const Graph& graph, CMap2& cmap2);
     bool propagate_frame_n_1(UGraph& ug, UG_Attributes& ug_attribs, Dart d);
-    bool propagate_frame_n_n(UGraph& ug, UG_Attributes& ug_attribs, Dart d);
+    bool propagate_frame_n_n(UGraph& ug, UG_Attributes& ug_attribs, Dart d, CMap2& cmap2);
 
     /// use frames to set geometry of connection interfaces
     bool set_interfaces_geometry(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2, CMap2_Attributes& m2_attribs);
-    bool set_interface_geometry_1_2(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2, CMap2_Attributes& m2_attribs, UGVertex ugv);
-    bool set_interface_geometry_n(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2, CMap2_Attributes& m2_attribs, UGVertex ugv);
     bool set_edge_geometry(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2, CMap2_Attributes& m2_attribs);
 
     /// builds a section for each branch in the graph and stores connecting darts in cmap2
@@ -134,6 +135,16 @@ namespace vessels_building{
     bool sew_sections(CMap2& cmap2, CMap2_Attributes& m2_attribs, CMap3& cmap3);
     /// set geometry of cmap3 from cmap2
     bool set_m3_geometry(CMap2& cmap2, CMap2_Attributes& m2_attribs, CMap3& cmap3);
+
+    /// returns first dart for which the diagonal starting at it's base would produce a convex oriented set of triangles from a quad
+    Dart convex_quad(CMap2& cmap2, CMap2_Attributes& m2_attribs, Dart f);
+    /// average of points on a sphere
+    VEC3 mean_dir(VEC3 center, Scalar radius, VEC3 point, std::vector<VEC3> points);
+    /// returns coordinates of the projection of P on the sphere of center C ands radius R
+    VEC3 project_on_sphere(VEC3 P, Scalar R, VEC3 C);
+
+    Dart shift_interface(CMap2& cmap2, Dart m2f, uint nb_shifts);
+    Frame shift_frame(Frame frame, uint nb_shifts);
 }
 
 

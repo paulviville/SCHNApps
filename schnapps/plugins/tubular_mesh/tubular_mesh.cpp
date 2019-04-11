@@ -82,7 +82,7 @@ bool Plugin_TubularMesh::enable()
 
 //    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/two_intersections.cg");
 //    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/intersection3.cg");
-//    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/intersections_2D.cg");
+//    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/intersections3_2D.cg");
     ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/stickwoman.cg");
 //    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/ReseauVasculaire003.cg");
 //    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/intersection4_alone.cg");
@@ -90,7 +90,6 @@ bool Plugin_TubularMesh::enable()
     plugin_polyline_render_->set_vertex_scale_factor(schnapps_->selected_view(), ugh_, 0.1f, true);
 
     UndirectedGraph* ug = ugh_->map();
-//    UndirectedGraph::VertexAttribute<VEC3> UGposition = ug->template get_attribute<VEC3, UGVertex>("position");
 
     map3h_ = plugin_cmap_provider_->add_cmap3("vessels");
     CMap3* map3 = map3h_->map();
@@ -100,17 +99,6 @@ bool Plugin_TubularMesh::enable()
 
     build_hexmesh(*ug, *map3, *map2);
 
-//    Vessels_Builder VBuilder;
-
-//    VBuilder.set_skeleton(ug);
-//    VBuilder.graph_stats();
-
-//    VBuilder.set_cmap3(map3);
-
-//    VBuilder.cmap2_ = map2;
-//    VBuilder.m2builder_ = new M2Builder(*map2);
-
-//    VBuilder.compute_cmap3();
     map3h_->create_vbo("position");
     map3h_->set_bb_vertex_attribute(add_setting("Bounding box attribute", "position").toString());
     map3h_->notify_attribute_added(M3Vertex::ORBIT, "position");
