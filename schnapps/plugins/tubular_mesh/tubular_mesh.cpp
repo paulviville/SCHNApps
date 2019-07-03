@@ -83,7 +83,14 @@ bool Plugin_TubularMesh::enable()
 //    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/two_intersections.cg");
 //    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/intersection3.cgr");
 //    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/intersections3_2D.cg");
-    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/stickwoman2.cgr");
+//    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/stickwoman2.cgr");
+//    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/Torus.cgr");
+    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/moebius.cgr");
+//    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/inter3_.cgr");
+//    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/spiral0.cgr");
+//    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/infinite.cgr");
+
+//    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/inter3_tests.cgr");
 //    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/ReseauVasculaire003.cg");
 //    ugh_ = plugin_import_->import_graph_from_file("/home/viville/Data/intersection4_alone.cg");
     plugin_polyline_render_->set_edge_color(schnapps_->selected_view(), ugh_, QColor(255,255,255), true);

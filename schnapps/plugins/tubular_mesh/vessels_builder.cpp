@@ -15,6 +15,20 @@ namespace vessels_building{
 //        add_radius(ug, 1.0);
 //        ug_stats(ug);
 
+//        VEC3 v0 = VEC3(1,1,1);
+//        VEC3 v1 = VEC3(2,2,2);
+//        VEC3 v2 = VEC3(3,3,3);
+//        Matrix3d m;
+//        m << v0, v1, v2;
+//        cgogn_log_info("m:") << m.col(0)[0] << " " << m.col(0)[1] << " " << m.col(0)[2];
+//        cgogn_log_info("m:") << m.col(1)[0] << " " << m.col(1)[1] << " " << m.col(1)[2];
+//        cgogn_log_info("m:") << m.col(2)[0] << " " << m.col(2)[1] << " " << m.col(2)[2];
+//        m << v0, v1, v0;
+//        cgogn_log_info("m:") << m.col(0)[0] << " " << m.col(0)[1] << " " << m.col(0)[2];
+//        cgogn_log_info("m:") << m.col(1)[0] << " " << m.col(1)[1] << " " << m.col(1)[2];
+//        cgogn_log_info("m:") << m.col(2)[0] << " " << m.col(2)[1] << " " << m.col(2)[2];
+
+
         bool valid;
         /// collecting pre existing graph attributes
         UG_Attributes ug_attribs;
@@ -109,15 +123,34 @@ namespace vessels_building{
 //        subdivide(cmap3);
         ug.foreach_cell([&](UGEdge uge) -> bool{
 //           add_layer_edge(ug, ug_attribs, cmap3, uge);
-           add_layer_edge(ug, ug_attribs, cmap3, uge);
-           add_layer_edge(ug, ug_attribs, cmap3, UGEdge(ug.alpha1(uge.dart)));
-           add_layer_edge(ug, ug_attribs, cmap3, UGEdge(ug.alpha1(ug.alpha0(uge.dart))));
-           add_layer_edge(ug, ug_attribs, cmap3, uge);
+//           add_layer_edge(ug, ug_attribs, cmap3, uge);
+//           cgogn_log_info("integrity: ") << cmap3.check_map_integrity();
+//           add_layer_edge(ug, ug_attribs, cmap3, UGEdge(ug.alpha1(uge.dart)));
+//           add_layer_edge(ug, ug_attribs, cmap3, UGEdge(ug.alpha1(ug.alpha0(uge.dart))));
+//           add_layer_edge(ug, ug_attribs, cmap3, UGEdge(ug.alpha1(ug.alpha0(uge.dart))));
+//           add_layer_edge(ug, ug_attribs, cmap3, uge);
            return false;
 //           return true;
         });
 
+//        uint boundary_darts = 0;
+//        uint not_boundary = 0;
+//        cmap3.foreach_dart([&](Dart d) -> bool{
+//            bool boundary = cmap3.is_boundary(d);
+//            if(boundary) boundary_darts++;
+//            else not_boundary++;
+//            cgogn_log_info("d: ") << boundary << " " << d << " // phi1: " << cmap3.phi1(d) << " // phi2: " << cmap3.phi2(d)<< " // phi3: " << cmap3.phi3(d);
+//            return true;
+//        });
+//        cgogn_log_info("boundary faces:") << (boundary_darts/ 4) << " " << boundary_darts;
+//        cgogn_log_info("not boundary:") << not_boundary;
+
 //        subdivide(cmap3);
+        CMap3::VertexAttribute<VEC3> m3pos = cmap3.get_attribute<VEC3, M3Vertex>("position");
+        CMap3_Quality_Attributes m3_QA_Attribs;
+        quality_build_frames(cmap3, m3pos, m3_QA_Attribs);
+        quality_scaled_jacobian(cmap3, m3_QA_Attribs);
+
         return true;
     }
 
@@ -532,39 +565,6 @@ namespace vessels_building{
         return true;
     }
 
-//    bool build_intersection_interfaces(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2){
-//        bool valid;
-//        ug.foreach_cell([&](UGVertex ugv) -> bool {
-//            if (ug.nb_darts_of_orbit(ugv) > 2) {
-//                valid = build_interface_n(ug, ug_attribs, cmap2, ugv);
-//            }
-//            else{
-//                valid = true;
-//            }
-//            return valid;
-//        });
-//        return valid;
-//    }
-
-//    bool build_1_2_interfaces(UGraph& ug, UG_Attributes& ug_attribs, CMap2& cmap2){
-//        bool valid;
-//        ug.foreach_cell([&](UGVertex ugv) -> bool {
-//            switch (ug.nb_darts_of_orbit(ugv)) {
-//            case 1:
-//                valid = build_interface_1(ug, ug_attribs, cmap2, ugv);
-//                return valid;
-//            case 2:
-//                valid = build_interface_2(ug, ug_attribs, cmap2, ugv);
-//                return valid;
-//            default:
-//                valid = true;
-//                return valid;
-//            }
-//        });
-
-//        return valid;
-//    }
-
     bool complete_intersections(UGraph& ug, UG_Attributes& ug_attribs, const Graph& graph, CMap2& cmap2, CMap2_Attributes& m2_attribs){
         for(UGVertex ugv : graph.intersections){
             if(!complete_intersection(ug, ug_attribs, cmap2, m2_attribs, ugv)){
@@ -613,9 +613,9 @@ namespace vessels_building{
                  center + (Ppos[2] - Ppos[1]).normalized().cross(V) * radius,
                  center + (Ppos[0] - Ppos[2]).normalized().cross(V) * radius};
 
-        M[0] = mean_dir(center, radius, M[0], {Ppos[0], Ppos[1]});
-        M[1] = mean_dir(center, radius, M[1], {Ppos[2], Ppos[1]});
-        M[2] = mean_dir(center, radius, M[2], {Ppos[0], Ppos[2]});
+//        M[0] = mean_dir(center, radius, M[0], {Ppos[0], Ppos[1]});
+//        M[1] = mean_dir(center, radius, M[1], {Ppos[2], Ppos[1]});
+//        M[2] = mean_dir(center, radius, M[2], {Ppos[0], Ppos[2]});
 
         m2_pos[Fd[0]] = M[0];
         m2_pos[Fd[1]] = M[1];
@@ -984,9 +984,11 @@ namespace vessels_building{
         }
 
         if(nb_e){
-            Scalar angle = std::acos(UE.col(0).dot(U_.col(0)));
-            cgogn_log_info("angle: ") << angle;
+            Scalar cos = UE.col(0).dot(U_.col(0));
+            Scalar angle = cos > 1 ? std::acos(1) : std::acos(cos);
             Scalar angle_step = angle / nb_e;
+
+            cgogn_log_info("angle_step: ") << (UE.col(0).dot(U_.col(0)) > 1) << " " << angle << " " << angle_step << " " << nb_e;
             Dart d0 = d;
             Dart d1 = ug.alpha0(d0);
             uint valence = ug.nb_darts_of_orbit(UGVertex(d1));
@@ -1049,6 +1051,7 @@ namespace vessels_building{
                 Dart d1 = cmap2.phi2(d0);
 
                 VEC3 edge_pos = project_on_sphere((m2_attribs.position[d0] + m2_attribs.position[d1])/2, radius, center);
+//                VEC3 edge_pos = center + ((m2_attribs.position[d0] - center) + (m2_attribs.position[d1] - center).normalized() * radius);
                 m2_attribs.edge_pos[m2e] = edge_pos;
             });
         });
@@ -1168,6 +1171,7 @@ namespace vessels_building{
         CMap3::VertexAttribute<VEC3> m3pos = cmap3.get_attribute<VEC3, M3Vertex>("position");
         M3DartMarker vertexMarker(cmap3);
         M3DartMarker edgeMarker(cmap3);
+
         cmap3.foreach_cell([&](M3Edge m3e){
             Dart e0 = m3e.dart;
             Dart e1 = cmap3.phi2(e0);
@@ -1177,6 +1181,8 @@ namespace vessels_building{
             m3pos[v] = pos;
             vertexMarker.mark_orbit(v);
         });
+
+        cgogn_log_info("integrity: ") << cmap3.check_map_integrity();
 
         cmap3.foreach_cell([&](M3Face m3f){
             Dart f0 = m3f.dart;
@@ -1198,6 +1204,8 @@ namespace vessels_building{
             });
         });
 
+        cgogn_log_info("integrity: ") << cmap3.check_map_integrity();
+
         cmap3.foreach_cell([&](M3Volume m3w){
             Dart a = m3w.dart;
             while(!edgeMarker.is_marked(a) || !edgeMarker.is_marked(cmap3.phi1(a)))
@@ -1213,6 +1221,10 @@ namespace vessels_building{
             bs.push_back(cmap3.phi1(path_a[0]));
             bs.push_back(cmap3.phi<21>(path_a[1]));
 
+            for(Dart d : path_a){
+                cgogn_log_info("d: ") << " " << d << " // phi1: " << cmap3.phi1(d) << " // phi2: " << cmap3.phi2(d)<< " // phi3: " << cmap3.phi3(d) << " " << cmap3.is_boundary(cmap3.phi3(d));
+                cgogn_log_info("d: ") << " " << d << " " << cmap3.phi<121>(d) << " " << cmap3.phi<121121>(d) << " " << cmap3.phi<121121121>(d) << " " << cmap3.phi<121121121121>(d) << " " << cmap3.phi<121121121121121>(d) << " " << cmap3.phi<121121121121121121>(d);
+            }
             cmap3.cut_volume(path_a);
 
             Dart f0 = cmap3.phi2(path_a[0]);
@@ -1253,6 +1265,8 @@ namespace vessels_building{
                 cmap3.cut_volume(path_c);
             }
         });
+
+        cgogn_log_info("integrity: ") << cmap3.check_map_integrity();
     }
 
     void add_layer_edge_corner(UGraph& ug, UG_Attributes& ug_attribs, CMap3& cmap3, UGEdge uge){
@@ -1325,9 +1339,14 @@ namespace vessels_building{
 
 
     void add_layer_edge(UGraph& ug, UG_Attributes& ug_attribs, CMap3& cmap3, UGEdge uge){
+        uint nb_bound_face_0 = 0;
+        cmap3.foreach_dart([&](Dart d){
+            if(cmap3.is_boundary(d))
+                nb_bound_face_0++;
+        });
+
         CMap3::VertexAttribute<VEC3> m3pos = cmap3.get_attribute<VEC3, M3Vertex>("position");
         Dart d0 = ug_attribs.sections[uge.dart];
-//        Dart d1 = cmap3.phi<2112>(d0);
 
         Dart d = cmap3.phi<12>(d0);
         uint layers = 1;
@@ -1362,21 +1381,13 @@ namespace vessels_building{
                 e = cmap3.phi<12321>(e);
         }
         m3builder.sew_volumes_fp(first, last);
-//        vols.push_back(std::pair<Dart, Dart>(h, cmap3.phi<211>(h)));
 
-//        if(cmap3.is_boundary(cmap3.phi<3>(h)))
-//                cgogn_log_info("h on boundary") << 0;
-//        cgogn_log_info("h not boundary") << h << " " << cmap3.phi3(h);
         M3Volume m3w = M3Volume(m3builder.close_hole_topo(h));
         m3builder.boundary_mark(m3w);
 
-//        if(cmap3.is_boundary(cmap3.phi<3>(h)))
-//                cgogn_log_info("h on boundary") << 0;
-//        cgogn_log_info("h not boundary") << h << " " << cmap3.phi3(h);
-
         cmap3.foreach_incident_vertex(CMap3::ConnectedComponent(first), [&](M3Vertex m3v){
             m3builder.new_orbit_embedding(m3v);
-            //m3pos[m3v] = VEC3(1,1,1);
+            m3pos[m3v] = VEC3(1,1,1);
         });
 
         for(std::pair<Dart, Dart> vol : cycle){
@@ -1431,7 +1442,170 @@ namespace vessels_building{
 
         }
 
+        uint nb_bound_face_1 = 0;
+        cmap3.foreach_dart([&](Dart d){
+            if(cmap3.is_boundary(d))
+                nb_bound_face_1++;
+        });
+        cgogn_log_info("nb bound faces: ") << (nb_bound_face_0);
+        cgogn_log_info("nb bound faces: ") << (nb_bound_face_1);
+
         return;
+    }
+
+    void quality_build_frames(CMap3& cmap3, CMap3::VertexAttribute<VEC3>& m3pos, CMap3_Quality_Attributes& m3_QA_Attribs){
+        m3_QA_Attribs.hexFrame = cmap3.get_attribute<Frame, M3Volume>("hexFrame");
+        if(!m3_QA_Attribs.hexFrame.is_valid()){
+            cgogn_log_info("added hexframe: ") << 1;
+            m3_QA_Attribs.hexFrame = cmap3.add_attribute<Frame, M3Volume>("hexFrame");
+        }
+        m3_QA_Attribs.cornerFrame = cmap3.get_attribute<Frame, M3Vertex2>("cornerFrame");
+        if(!m3_QA_Attribs.cornerFrame.is_valid()){
+            m3_QA_Attribs.cornerFrame = cmap3.add_attribute<Frame, M3Vertex2>("cornerFrame");
+        }
+        m3_QA_Attribs.diagonals = cmap3.get_attribute<Frame, M3Volume>("diagonals");
+        if(!m3_QA_Attribs.diagonals.is_valid()){
+            m3_QA_Attribs.diagonals = cmap3.add_attribute<Frame, M3Volume>("diagonals");
+        }
+
+        cmap3.foreach_cell([&](M3Volume m3w) -> bool{
+            quality_build_frames_hexa(cmap3, m3pos, m3_QA_Attribs, m3w);
+            return true;
+        });
+
+    }
+
+    void quality_build_frames_hexa(CMap3& cmap3, CMap3::VertexAttribute<VEC3>& m3pos, CMap3_Quality_Attributes& m3_QA_Attribs, M3Volume m3w){
+        Dart d0 = m3w.dart;
+        Dart D[8];
+        D[0] = d0;
+        D[1] = cmap3.phi<1>(d0);
+        D[3] = cmap3.phi<211>(d0);
+        D[2] = cmap3.phi<1>(D[3]);
+        D[5] = cmap3.phi<1>(D[1]);
+        D[4] = cmap3.phi<1>(D[5]);
+        D[6] =cmap3.phi<211>(D[5]);
+        D[7] = cmap3.phi<1>(D[6]);
+
+        VEC3 P[8];
+        P[0] = m3pos[D[0]];
+        P[1] = m3pos[D[1]];
+        P[2] = m3pos[D[2]];
+        P[3] = m3pos[D[3]];
+        P[4] = m3pos[D[4]];
+        P[5] = m3pos[D[5]];
+        P[6] = m3pos[D[6]];
+        P[7] = m3pos[D[7]];
+
+        m3_QA_Attribs.hexFrame[m3w] << (P[1] + P[2] + P[5] + P[6] - P[0] - P[3] - P[4] - P[7]),
+                (P[3] + P[2] + P[7] + P[6] - P[0] - P[1] - P[4] - P[5]),
+                (P[4] + P[5] + P[6] + P[7] - P[0] - P[1] - P[2] - P[3]);
+
+        m3_QA_Attribs.cornerFrame[D[0]] << (P[1] - P[0]), (P[3] - P[0]), (P[4] - P[0]);
+        m3_QA_Attribs.cornerFrame[D[1]] << (P[2] - P[1]), (P[0] - P[1]), (P[5] - P[1]);
+        m3_QA_Attribs.cornerFrame[D[2]] << (P[3] - P[2]), (P[1] - P[2]), (P[6] - P[2]);
+        m3_QA_Attribs.cornerFrame[D[3]] << (P[0] - P[3]), (P[2] - P[3]), (P[7] - P[3]);
+        m3_QA_Attribs.cornerFrame[D[4]] << (P[0] - P[4]), (P[7] - P[4]), (P[5] - P[4]);
+        m3_QA_Attribs.cornerFrame[D[5]] << (P[7] - P[5]), (P[6] - P[5]), (P[1] - P[5]);
+        m3_QA_Attribs.cornerFrame[D[6]] << (P[7] - P[6]), (P[2] - P[6]), (P[5] - P[6]);
+        m3_QA_Attribs.cornerFrame[D[7]] << (P[6] - P[7]), (P[4] - P[7]), (P[3] - P[7]);
+    }
+
+    void quality_scaled_jacobian(CMap3& cmap3, CMap3_Quality_Attributes& m3_QA_Attribs){
+        m3_QA_Attribs.Scaled_Jacobian = cmap3.get_attribute<Scalar, M3Volume>("Scaled_Jacobian");
+        if(!m3_QA_Attribs.Scaled_Jacobian.is_valid()){
+            m3_QA_Attribs.Scaled_Jacobian = cmap3.add_attribute<Scalar, M3Volume>("Scaled_Jacobian");
+        }
+
+        cmap3.foreach_cell([&](M3Volume m3w) -> bool{
+            quality_scaled_jacobian_hexa(cmap3, m3_QA_Attribs, m3w);
+            return true;
+        });
+    }
+
+    void quality_scaled_jacobian_hexa(CMap3& cmap3, CMap3_Quality_Attributes& m3_QA_Attribs, M3Volume m3w){
+        Frame m = m3_QA_Attribs.hexFrame[m3w];
+        m.col(0).normalize();
+        m.col(1).normalize();
+        m.col(2).normalize();
+
+        Scalar jacobian = m.determinant();
+        cmap3.foreach_incident_vertex(m3w, [&](M3Vertex m3v){
+            m = m3_QA_Attribs.cornerFrame[m3v.dart];
+            m.col(0).normalize();
+            m.col(1).normalize();
+            m.col(2).normalize();
+            Scalar temp = m.determinant();
+            if(temp < jacobian)
+                jacobian = temp;
+        });
+        m3_QA_Attribs.Scaled_Jacobian[m3w] = jacobian;
+    }
+
+    void quality_jacobian(CMap3& cmap3, CMap3_Quality_Attributes& m3_QA_Attribs){
+        m3_QA_Attribs.Jacobian = cmap3.get_attribute<Scalar, M3Volume>("Jacobian");
+        if(!m3_QA_Attribs.Jacobian.is_valid()){
+            m3_QA_Attribs.Jacobian = cmap3.add_attribute<Scalar, M3Volume>("Jacobian");
+        }
+
+        cmap3.foreach_cell([&](M3Volume m3w) -> bool{
+            quality_jacobian_hexa(cmap3, m3_QA_Attribs, m3w);
+            return true;
+        });
+    }
+
+    void quality_jacobian_hexa(CMap3& cmap3, CMap3_Quality_Attributes& m3_QA_Attribs, M3Volume m3w){
+        Scalar jacobian = m3_QA_Attribs.hexFrame[m3w].determinant();
+        cmap3.foreach_incident_vertex(m3w, [&](M3Vertex m3v){
+            Scalar temp = m3_QA_Attribs.cornerFrame[m3v.dart].determinant();
+            if(temp < jacobian)
+                jacobian = temp;
+        });
+        m3_QA_Attribs.Jacobian[m3w] = jacobian;
+    }
+
+    void quality_mean_frobenius(CMap3& cmap3, CMap3_Quality_Attributes& m3_QA_Attribs){
+        m3_QA_Attribs.Mean_Frobenius = cmap3.get_attribute<Scalar, M3Volume>("Mean_Frobenius");
+        if(!m3_QA_Attribs.Mean_Frobenius.is_valid()){
+            m3_QA_Attribs.Mean_Frobenius = cmap3.add_attribute<Scalar, M3Volume>("Mean_Frobenius");
+        }
+
+        cmap3.foreach_cell([&](M3Volume m3w) -> bool{
+            quality_mean_frobenius_hexa(cmap3, m3_QA_Attribs, m3w);
+            return true;
+        });
+    }
+
+    void quality_max_frobenius(CMap3& cmap3, CMap3_Quality_Attributes& m3_QA_Attribs){
+        m3_QA_Attribs.Max_Forbenius = cmap3.get_attribute<Scalar, M3Volume>("Max_Forbenius");
+        if(!m3_QA_Attribs.Max_Forbenius.is_valid()){
+            m3_QA_Attribs.Max_Forbenius = cmap3.add_attribute<Scalar, M3Volume>("Max_Forbenius");
+        }
+
+        cmap3.foreach_cell([&](M3Volume m3w) -> bool{
+            quality_max_frobenius_hexa(cmap3, m3_QA_Attribs, m3w);
+            return true;
+        });
+    }
+
+    void quality_mean_frobenius_hexa(CMap3& cmap3, CMap3_Quality_Attributes& m3_QA_Attribs, M3Volume m3w){
+        Scalar jacobian = m3_QA_Attribs.hexFrame[m3w].determinant();
+        cmap3.foreach_incident_vertex(m3w, [&](M3Vertex m3v){
+            Scalar temp = m3_QA_Attribs.cornerFrame[m3v.dart].determinant();
+            if(temp < jacobian)
+                jacobian = temp;
+        });
+        m3_QA_Attribs.Jacobian[m3w] = jacobian;
+    }
+
+    void quality_max_frobenius_hexa(CMap3& cmap3, CMap3_Quality_Attributes& m3_QA_Attribs, M3Volume m3w){
+        Scalar jacobian = m3_QA_Attribs.hexFrame[m3w].determinant();
+        cmap3.foreach_incident_vertex(m3w, [&](M3Vertex m3v){
+            Scalar temp = m3_QA_Attribs.cornerFrame[m3v.dart].determinant();
+            if(temp < jacobian)
+                jacobian = temp;
+        });
+        m3_QA_Attribs.Jacobian[m3w] = jacobian;
     }
 }
 }

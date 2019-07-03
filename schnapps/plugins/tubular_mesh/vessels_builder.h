@@ -15,6 +15,7 @@ namespace schnapps
 
 namespace vessels_building{
     using Scalar = cgogn::geometry::ScalarOf<VEC3>;
+    using Eigen::Matrix3d;
     using Frame = Eigen::Matrix3d;
     using Eigen::AngleAxisd;
     using Dart = cgogn::Dart;
@@ -71,6 +72,16 @@ namespace vessels_building{
         CMap2::FaceAttribute<Dart> f_branch;
     } CMap2_Attributes;
 
+    typedef struct CMap3_Quality_Attributes{
+        CMap3::VolumeAttribute<Frame> hexFrame;
+        CMap3::Vertex2Attribute<Frame> cornerFrame;
+        CMap3::VolumeAttribute<Frame> diagonals;
+
+        CMap3::VolumeAttribute<Scalar> Jacobian;
+        CMap3::VolumeAttribute<Scalar> Mean_Frobenius;
+        CMap3::VolumeAttribute<Scalar> Max_Forbenius;
+        CMap3::VolumeAttribute<Scalar> Scaled_Jacobian;
+    }CMap3_Quality_Attributes;
 
 
     /// Build hexmesh from input undirected graph
@@ -160,6 +171,20 @@ namespace vessels_building{
     void subdivide(CMap3& cmap3);
     void add_layer_edge(UGraph& ug, UG_Attributes& ug_attribs, CMap3& cmap3, UGEdge uge);
     void add_layer_edge_corner(UGraph& ug, UG_Attributes& ug_attribs, CMap3& cmap3, UGEdge uge);
+
+    Scalar jacobian_vert(CMap3& cmap3, M3Vertex m3v, CMap3::VertexAttribute<VEC3>& m3pos);
+    Scalar jacobian_hexa(CMap3& cmap3, M3Volume m3w, CMap3::VertexAttribute<VEC3>& m3pos);
+
+    void quality_build_frames(CMap3& cmap3, CMap3::VertexAttribute<VEC3>& m3pos, CMap3_Quality_Attributes& m3_QA_Attribs);
+    void quality_build_frames_hexa(CMap3& cmap3, CMap3::VertexAttribute<VEC3>& m3pos, CMap3_Quality_Attributes& m3_QA_Attribs, M3Volume m3w);
+    void quality_jacobian(CMap3& cmap3, CMap3_Quality_Attributes& m3_QA_Attribs);
+    void quality_jacobian_hexa(CMap3& cmap3, CMap3_Quality_Attributes& m3_QA_Attribs, M3Volume m3w);
+    void quality_scaled_jacobian(CMap3& cmap3, CMap3_Quality_Attributes& m3_QA_Attribs);
+    void quality_scaled_jacobian_hexa(CMap3& cmap3, CMap3_Quality_Attributes& m3_QA_Attribs, M3Volume m3w);
+    void quality_mean_frobenius(CMap3& cmap3, CMap3_Quality_Attributes& m3_QA_Attribs);
+    void quality_max_frobenius(CMap3& cmap3, CMap3_Quality_Attributes& m3_QA_Attribs);
+    void quality_mean_frobenius_hexa(CMap3& cmap3, CMap3_Quality_Attributes& m3_QA_Attribs, M3Volume m3w);
+    void quality_max_frobenius_hexa(CMap3& cmap3, CMap3_Quality_Attributes& m3_QA_Attribs, M3Volume m3w);
 }
 
 } // namespace schnapps
